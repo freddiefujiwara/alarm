@@ -7,6 +7,7 @@ import {
   MAX_COMMANDS,
   buildSpeechCommand,
   buildYouTubeCommand,
+  defaultSelectIndex,
   describeCommand,
   formatApiTime,
   toApiTime,
@@ -56,7 +57,7 @@ function setStatus(message, isError = false) {
   statusEl.className = isError ? "error" : "";
 }
 
-function fillSelect(select, items) {
+function fillSelect(select, items, preferredId) {
   select.innerHTML = "";
   items.forEach((item, i) => {
     const opt = document.createElement("option");
@@ -64,6 +65,9 @@ function fillSelect(select, items) {
     opt.textContent = item.label;
     select.appendChild(opt);
   });
+  if (preferredId && items.length) {
+    select.value = String(defaultSelectIndex(items, preferredId));
+  }
 }
 
 function renderDeviceActions() {
@@ -250,8 +254,8 @@ function initForm() {
   const pad = (n) => String(n).padStart(2, "0");
   dateEl.value = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`;
   timeEl.value = `${pad(now.getHours())}:${pad(now.getMinutes())}`;
-  fillSelect(speechDeviceEl, catalog.speech);
-  fillSelect(youtubeDeviceEl, catalog.youtube);
+  fillSelect(speechDeviceEl, catalog.speech, "tatami");
+  fillSelect(youtubeDeviceEl, catalog.youtube, "tatami");
   fillSelect(deviceSelectEl, [...catalog.devices, ...catalog.groups]);
   renderDeviceActions();
   renderCommands();

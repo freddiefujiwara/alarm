@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   buildSpeechCommand,
   buildYouTubeCommand,
+  defaultSelectIndex,
   describeCommand,
   formatApiTime,
   parseYouTubeId,
@@ -73,5 +74,21 @@ describe("describeCommand", () => {
     expect(describeCommand("/fan/setWindSpeed/-p/11", catalog)).toBe("Fan S");
     expect(describeCommand("/fan/turnOn", catalog)).toBe("/fan/turnOn");
     expect(describeCommand("/unknown/x", catalog)).toBe("/unknown/x");
+  });
+});
+
+describe("defaultSelectIndex", () => {
+  it("prefers the entry with the matching id", () => {
+    const items = [{ id: "nest" }, { id: "tatami" }, { id: "tv" }];
+    expect(defaultSelectIndex(items, "tatami")).toBe(1);
+  });
+
+  it("falls back to the first entry when the id is absent", () => {
+    const items = [{ id: "nest" }, { id: "tv" }];
+    expect(defaultSelectIndex(items, "tatami")).toBe(0);
+  });
+
+  it("returns 0 for an empty list", () => {
+    expect(defaultSelectIndex([], "tatami")).toBe(0);
   });
 });
