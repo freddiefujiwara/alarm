@@ -4,6 +4,13 @@ import { decodeJwtPayload } from "./auth.js";
 import { THEME_KEY, resolveTheme, nextTheme, applyTheme } from "./theme.js";
 import { callApi } from "./api.js";
 import {
+  buildShareUrl,
+  formatShareExpiry,
+  formatShareRemaining,
+  parseShareToken,
+  shareSecondsLeft,
+} from "./share.js";
+import {
   MAX_COMMANDS,
   buildSpeechCommand,
   buildYouTubeCommand,
@@ -42,10 +49,26 @@ const cmdCountEl = $("cmd-count");
 const formStatusEl = $("form-status");
 const statusEl = $("status");
 const registerBtn = $("register");
+const shareBannerEl = $("share-banner");
+const shareExpiredEl = $("share-expired");
+const shareSectionEl = $("share-section");
+const shareCardErrorEl = $("share-card-error");
+const shareIssueViewEl = $("share-issue-view");
+const shareIssuedViewEl = $("share-issued-view");
+const shareUrlEl = $("share-url");
+const shareRemainingEl = $("share-remaining");
+const shareExpiresEl = $("share-expires");
+const shareCopyBtn = $("share-copy");
 
 const catalog = CONFIG.COMMANDS;
 let idToken = null;
 let commands = [];
+// Temporary access link state. shareToken is set when the page is
+// opened via a #share= link (share mode); issuedShare holds the link
+// the owner just issued (kept in memory only, like the health site).
+let shareToken = null;
+let issuedShare = null;
+let shareTimer = null;
 
 let theme = resolveTheme(localStorage.getItem(THEME_KEY));
 applyTheme(document.documentElement, themeBtn, theme);
@@ -58,6 +81,36 @@ themeBtn.addEventListener("click", () => {
 function setStatus(message, isError = false) {
   statusEl.textContent = message;
   statusEl.className = isError ? "error" : "";
+}
+
+// One admin API call, authenticated with the share token in share
+// mode and with the Google ID token otherwise.
+function api(body) {
+  if (shareToken) {
+    return callApi(CONFIG.GAS_ENDPOINT, null, { ...body, share_token: shareToken });
+  }
+  return callApi(CONFIG.GAS_ENDPOINT, idToken, body);
+}
+
+function isShareAuthError(res) {
+  return Boolean(
+    shareToken && res && typeof res.error === "string" && res.error.includes("share session"),
+  );
+}
+
+function showShareExpired() {
+  gateEl.hidden = true;
+  listSectionEl.hidden = true;
+  formSectionEl.hidden = true;
+  shareSectionEl.hidden = true;
+  logoutBtn.hidden = true;
+  shareExpiredEl.hidden = false;
+}
+
+function updateShareBanner(res) {
+  if (!shareToken || !res || !res._share) return;
+  shareBannerEl.textContent = `一時リンクで表示中です（${formatShareExpiry(res._share.expires_at)} まで有効）`;
+  shareBannerEl.hidden = false;
 }
 
 function fillSelect(select, items, preferredId) {
@@ -188,8 +241,13 @@ deviceSelectEl.addEventListener("change", renderDeviceActions);
 async function loadList() {
   listStatusEl.textContent = "読み込み中…";
   try {
-    const res = await callApi(CONFIG.GAS_ENDPOINT, idToken, { action: "list" });
+    const res = await api({ action: "list" });
+    if (isShareAuthError(res)) {
+      showShareExpired();
+      return;
+    }
     if (!res.ok) throw new Error(res.error || "unknown error");
+    updateShareBanner(res);
     listEl.innerHTML = "";
     if (!res.alarms.length) {
       listStatusEl.textContent = "設定中のアラームはありません。";
@@ -216,10 +274,14 @@ async function loadList() {
       del.addEventListener("click", async () => {
         del.disabled = true;
         try {
-          const r = await callApi(CONFIG.GAS_ENDPOINT, idToken, {
+          const r = await api({
             action: "delete",
             time: alarm.time,
           });
+          if (isShareAuthError(r)) {
+            showShareExpired();
+            return;
+          }
           if (!r.ok) throw new Error(r.error || "unknown error");
           await loadList();
         } catch (err) {
@@ -257,8 +319,13 @@ registerBtn.addEventListener("click", async () => {
   registerBtn.disabled = true;
   setStatus("登録中…");
   try {
-    const res = await callApi(CONFIG.GAS_ENDPOINT, idToken, body);
+    const res = await api(body);
+    if (isShareAuthError(res)) {
+      showShareExpired();
+      return;
+    }
     if (!res.ok) throw new Error(res.error || "unknown error");
+    updateShareBanner(res);
     setStatus(`${formatApiTime(res.time)} にアラームを登録しました。`);
     commands = [];
     renderCommands();
@@ -283,12 +350,107 @@ function initForm() {
   renderMode();
 }
 
+// --- Owner-side temporary access link card ---
+
+function renderIssuedShare() {
+  if (!issuedShare) {
+    shareIssueViewEl.hidden = false;
+    shareIssuedViewEl.hidden = true;
+    if (shareTimer) {
+      clearInterval(shareTimer);
+      shareTimer = null;
+    }
+    return;
+  }
+  shareIssueViewEl.hidden = true;
+  shareIssuedViewEl.hidden = false;
+  const base = `${window.location.origin}${import.meta.env.BASE_URL}`;
+  shareUrlEl.value = buildShareUrl(base, issuedShare.token);
+  shareExpiresEl.textContent = formatShareExpiry(issuedShare.expiresAt);
+  const tick = () => {
+    shareRemainingEl.textContent = formatShareRemaining(
+      shareSecondsLeft(issuedShare.expiresAt, Date.now()),
+    );
+  };
+  tick();
+  if (!shareTimer) {
+    shareTimer = setInterval(tick, 30000);
+  }
+}
+
+function setShareButtonsDisabled(disabled) {
+  ["share-issue", "share-reissue", "share-revoke", "share-copy"].forEach((id) => {
+    $(id).disabled = disabled;
+  });
+}
+
+async function issueShare() {
+  setShareButtonsDisabled(true);
+  shareCardErrorEl.textContent = "";
+  try {
+    const res = await callApi(CONFIG.GAS_ENDPOINT, idToken, { action: "issue_share" });
+    if (!res.ok) throw new Error(res.error || "unknown error");
+    issuedShare = { token: res.share_token, expiresAt: res.expires_at };
+    renderIssuedShare();
+  } catch (err) {
+    shareCardErrorEl.textContent = `発行に失敗しました: ${err.message}`;
+  } finally {
+    setShareButtonsDisabled(false);
+  }
+}
+
+async function revokeShare() {
+  setShareButtonsDisabled(true);
+  shareCardErrorEl.textContent = "";
+  try {
+    const res = await callApi(CONFIG.GAS_ENDPOINT, idToken, { action: "revoke_share" });
+    if (!res.ok) throw new Error(res.error || "unknown error");
+    issuedShare = null;
+    renderIssuedShare();
+  } catch (err) {
+    shareCardErrorEl.textContent = `無効化に失敗しました: ${err.message}`;
+  } finally {
+    setShareButtonsDisabled(false);
+  }
+}
+
+$("share-issue").addEventListener("click", issueShare);
+$("share-reissue").addEventListener("click", issueShare);
+$("share-revoke").addEventListener("click", revokeShare);
+shareCopyBtn.addEventListener("click", async () => {
+  try {
+    await navigator.clipboard.writeText(shareUrlEl.value);
+    shareCopyBtn.textContent = "コピーしました";
+    setTimeout(() => {
+      shareCopyBtn.textContent = "URLをコピー";
+    }, 2000);
+  } catch {
+    shareUrlEl.select();
+  }
+});
+
 function showMain(email) {
   gateEl.hidden = true;
+  shareExpiredEl.hidden = true;
+  shareBannerEl.hidden = true;
   listSectionEl.hidden = false;
   formSectionEl.hidden = false;
+  shareSectionEl.hidden = false;
   logoutBtn.hidden = false;
   accountEl.textContent = "ログイン中：" + email;
+  renderIssuedShare();
+  initForm();
+  loadList();
+}
+
+function showShareMain() {
+  gateEl.hidden = true;
+  shareExpiredEl.hidden = true;
+  shareSectionEl.hidden = true;
+  logoutBtn.hidden = true;
+  listSectionEl.hidden = false;
+  formSectionEl.hidden = false;
+  accountEl.textContent = "";
   initForm();
   loadList();
 }
@@ -297,6 +459,9 @@ function showGate() {
   gateEl.hidden = false;
   listSectionEl.hidden = true;
   formSectionEl.hidden = true;
+  shareSectionEl.hidden = true;
+  shareExpiredEl.hidden = true;
+  shareBannerEl.hidden = true;
   logoutBtn.hidden = true;
 }
 
@@ -310,6 +475,8 @@ function onCredential(response) {
 
 logoutBtn.addEventListener("click", () => {
   idToken = null;
+  issuedShare = null;
+  renderIssuedShare();
   if (window.google) {
     google.accounts.id.disableAutoSelect();
   }
@@ -317,6 +484,14 @@ logoutBtn.addEventListener("click", () => {
 });
 
 window.addEventListener("load", () => {
+  // A #share= link skips the sign-in gate entirely: the share token
+  // authenticates the API calls instead of a Google ID token.
+  const token = parseShareToken(window.location.hash);
+  if (token) {
+    shareToken = token;
+    showShareMain();
+    return;
+  }
   google.accounts.id.initialize({
     client_id: CONFIG.GOOGLE_CLIENT_ID,
     callback: onCredential,

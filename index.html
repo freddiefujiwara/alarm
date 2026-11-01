@@ -44,6 +44,7 @@
             <h2 class="section-title">設定中のアラーム</h2>
             <button id="reload" class="theme-toggle" type="button">再読み込み</button>
           </div>
+          <p id="share-banner" class="meta" hidden></p>
           <p id="account" class="meta"></p>
           <div id="alarm-list"></div>
           <p id="list-status" class="meta"></p>
@@ -116,6 +117,36 @@
             <button id="register" class="post-button" type="button">登録する</button>
           </div>
           <div id="status"></div>
+        </section>
+
+        <section id="share-expired" class="table-wrap" hidden>
+          <h2 class="section-title">リンクの有効期限が切れています</h2>
+          <p class="meta">この一時アクセスリンクは失効しています。発行者に新しいリンクを依頼してください。</p>
+        </section>
+
+        <section id="share-section" class="table-wrap" hidden>
+          <h2 class="section-title">一時アクセスリンク</h2>
+          <p class="meta">ログイン不要で1か月間このページを使えるURLを発行します。新しいURLを発行すると、前のURLは無効になります。この画面を閉じると発行したURLは再表示できません。</p>
+          <p id="share-card-error" class="error"></p>
+          <div id="share-issue-view">
+            <p>
+              <button id="share-issue" class="theme-toggle" type="button">1か月間有効なURLを発行</button>
+            </p>
+          </div>
+          <div id="share-issued-view" hidden>
+            <p>
+              <strong id="share-remaining"></strong>
+              <span class="meta">（<span id="share-expires"></span> まで有効）</span>
+            </p>
+            <p>
+              <input id="share-url" class="share-url-input" type="text" readonly aria-label="一時アクセスURL" />
+              <button id="share-copy" class="theme-toggle" type="button">URLをコピー</button>
+            </p>
+            <p>
+              <button id="share-reissue" class="theme-toggle" type="button">新しいURLを発行し直す</button>
+              <button id="share-revoke" class="theme-toggle" type="button">今すぐ無効化する</button>
+            </p>
+          </div>
         </section>
       </main>
     </div>
