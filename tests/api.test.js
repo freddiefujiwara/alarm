@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { callApi } from "./api.js";
+import { callApi } from "../src/api.js";
 
 describe("callApi", () => {
   it("posts JSON with the ID token merged into the body", async () => {

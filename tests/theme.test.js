@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { applyTheme, nextTheme, resolveTheme } from "./theme.js";
+import { applyTheme, nextTheme, resolveTheme } from "../src/theme.js";
 
 describe("theme", () => {
   it("resolves dark by default and light only when stored", () => {

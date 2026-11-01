@@ -6,7 +6,7 @@ import {
   formatApiTime,
   parseYouTubeId,
   toApiTime,
-} from "./builder.js";
+} from "../src/builder.js";
 
 const catalog = {
   speech: [{ id: "nest", label: "Nest", prefix: "/speak/-h/192.0.2.1/-v/60/-s/" }],
