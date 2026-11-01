@@ -94,13 +94,18 @@ export function fromWireCommand(command) {
   return command;
 }
 
+// What a text-less alarm says after the time: a nudge to get moving.
+// Mirrors EMPTY_TEXT_SUFFIX_ in the alarm backend.
+export const EMPTY_TEXT_SUFFIX = "時間ですよ。時間ですよ。そろそろ時間ですよ。";
+
 // Prefix a spoken text with the alarm time, in the same wording the
 // alarm backend uses for text alarms: 12-hour clock, "ちょうど" on
 // the hour — for example "7時30分です。" or "1時ちょうどです。".
-// Without a valid time value the text is returned unchanged.
+// An empty text gets the nudge suffix instead. Without a valid time
+// value the text (or suffix) is returned unchanged.
 export function speechTextWithTime(timeValue, text) {
   const match = /^(\d{1,2}):(\d{2})/.exec(timeValue || "");
-  const body = text || "";
+  const body = text ? text : EMPTY_TEXT_SUFFIX;
   if (!match) return body;
   const hour = Number(match[1]) % 12 || 12;
   const minute = Number(match[2]);
