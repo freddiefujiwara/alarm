@@ -101,8 +101,10 @@ describe("speechTextWithTime", () => {
     expect(speechTextWithTime("07:30", "行ってきます")).toBe("7時30分です。行ってきます");
   });
 
-  it("uses ちょうど on the hour and a 12-hour clock", () => {
-    expect(speechTextWithTime("13:00", "")).toBe("1時ちょうどです。");
+  it("uses ちょうど on the hour, a 12-hour clock, and the nudge for empty text", () => {
+    expect(speechTextWithTime("13:00", "")).toBe(
+      "1時ちょうどです。時間ですよ。時間ですよ。そろそろ時間ですよ。"
+    );
     expect(speechTextWithTime("00:05", "テスト")).toBe("12時5分です。テスト");
   });
 
