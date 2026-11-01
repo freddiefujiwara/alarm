@@ -72,6 +72,15 @@ function safeDecode(value) {
   }
 }
 
+// Index of the catalog entry to preselect in a dropdown: the entry
+// whose id matches preferredId, or the first entry when there is no
+// match. The alarm page defaults sound output to the Tatami speaker
+// because the Nest speaker is in the family space.
+export function defaultSelectIndex(items, preferredId) {
+  const index = (items || []).findIndex((item) => item && item.id === preferredId);
+  return index >= 0 ? index : 0;
+}
+
 // A short human label for one stored command, used in the alarm list
 // and in the builder's command chips:
 // - speech commands  -> 発話（speaker）: text
