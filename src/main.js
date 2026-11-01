@@ -10,6 +10,7 @@ import {
   defaultSelectIndex,
   describeCommand,
   formatApiTime,
+  speechTextWithTime,
   toApiTime,
 } from "./builder.js";
 
@@ -134,11 +135,7 @@ $("add-speech").addEventListener("click", () => {
   const speaker = catalog.speech[Number(speechDeviceEl.value || 0)];
   const text = speechCmdTextEl.value.trim();
   if (!speaker) return;
-  if (!text) {
-    formStatusEl.textContent = "読み上げる文を入力してください。";
-    return;
-  }
-  addCommands([buildSpeechCommand(speaker.prefix, text)]);
+  addCommands([buildSpeechCommand(speaker.prefix, speechTextWithTime(timeEl.value, text))]);
   speechCmdTextEl.value = "";
 });
 

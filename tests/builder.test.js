@@ -6,6 +6,7 @@ import {
   describeCommand,
   formatApiTime,
   parseYouTubeId,
+  speechTextWithTime,
   toApiTime,
 } from "../src/builder.js";
 
@@ -90,5 +91,20 @@ describe("defaultSelectIndex", () => {
 
   it("returns 0 for an empty list", () => {
     expect(defaultSelectIndex([], "tatami")).toBe(0);
+  });
+});
+
+describe("speechTextWithTime", () => {
+  it("prefixes the alarm time in the backend wording", () => {
+    expect(speechTextWithTime("07:30", "行ってきます")).toBe("7時30分です。行ってきます");
+  });
+
+  it("uses ちょうど on the hour and a 12-hour clock", () => {
+    expect(speechTextWithTime("13:00", "")).toBe("1時ちょうどです。");
+    expect(speechTextWithTime("00:05", "テスト")).toBe("12時5分です。テスト");
+  });
+
+  it("returns the text unchanged without a valid time", () => {
+    expect(speechTextWithTime("", "テスト")).toBe("テスト");
   });
 });

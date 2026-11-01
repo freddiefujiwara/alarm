@@ -72,6 +72,19 @@ function safeDecode(value) {
   }
 }
 
+// Prefix a spoken text with the alarm time, in the same wording the
+// alarm backend uses for text alarms: 12-hour clock, "ちょうど" on
+// the hour — for example "7時30分です。" or "1時ちょうどです。".
+// Without a valid time value the text is returned unchanged.
+export function speechTextWithTime(timeValue, text) {
+  const match = /^(\d{1,2}):(\d{2})/.exec(timeValue || "");
+  const body = text || "";
+  if (!match) return body;
+  const hour = Number(match[1]) % 12 || 12;
+  const minute = Number(match[2]);
+  return `${hour}時${minute ? `${minute}分` : "ちょうど"}です。${body}`;
+}
+
 // Index of the catalog entry to preselect in a dropdown: the entry
 // whose id matches preferredId, or the first entry when there is no
 // match. The alarm page defaults sound output to the Tatami speaker
