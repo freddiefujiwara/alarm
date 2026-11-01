@@ -19,8 +19,8 @@
     <link rel="icon"
   href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='12' fill='%23000'/%3E%3Ctext x='32' y='42' font-size='34' text-anchor='middle' fill='white' font-family='system-ui'%3EF%3C/text%3E" />
     <script src="https://accounts.google.com/gsi/client" async defer></script>
-    <script type="module" crossorigin src="/alarm/assets/index-BvEuMJeb.js"></script>
-    <link rel="stylesheet" crossorigin href="/alarm/assets/index-BkaBSGAZ.css">
+    <script type="module" crossorigin src="/alarm/assets/index-CgI_5ke9.js"></script>
+    <link rel="stylesheet" crossorigin href="/alarm/assets/index-J41Yd2-D.css">
   </head>
   <body>
     <div class="layout">
@@ -70,8 +70,14 @@
           </div>
 
           <div id="commands-panel" hidden>
-            <div class="builder-block">
-              <h3>発話</h3>
+            <div class="builder-tabs" role="tablist" aria-label="コマンドの種類">
+              <button type="button" class="builder-tab active" data-builder-tab="speech" role="tab" aria-selected="true">発話</button>
+              <button type="button" class="builder-tab" data-builder-tab="youtube" role="tab" aria-selected="false">YouTube</button>
+              <button type="button" class="builder-tab" data-builder-tab="device" role="tab" aria-selected="false">機器</button>
+              <button type="button" class="builder-tab" data-builder-tab="raw" role="tab" aria-selected="false">直接入力</button>
+            </div>
+
+            <div class="builder-block" id="builder-speech">
               <div class="field-row">
                 <select id="speech-device" aria-label="スピーカー"></select>
                 <input id="speech-cmd-text" type="text" placeholder="読み上げる文（任意）" />
@@ -80,8 +86,7 @@
               <p class="meta">設定した時刻の「◯時◯分です。」が自動で付きます。文が空なら時刻だけを読み上げます。</p>
             </div>
 
-            <div class="builder-block">
-              <h3>YouTube</h3>
+            <div class="builder-block" id="builder-youtube" hidden>
               <div class="field-row">
                 <select id="youtube-device" aria-label="再生先"></select>
                 <input id="youtube-url" type="url" placeholder="YouTube URL" />
@@ -89,20 +94,19 @@
               </div>
             </div>
 
-            <div class="builder-block">
-              <h3>機器</h3>
+            <div class="builder-block" id="builder-device" hidden>
               <div class="field-row">
                 <select id="device-select" aria-label="機器"></select>
               </div>
               <div id="device-actions" class="field-row"></div>
             </div>
 
-            <div class="builder-block">
-              <h3>コマンド直接入力</h3>
+            <div class="builder-block" id="builder-raw" hidden>
               <div class="field-row">
-                <input id="raw-command" type="text" placeholder="/hue/lights/off" />
+                <input id="raw-command" type="text" placeholder="switchbot-command -d C70C… -c turnOff" />
                 <button id="add-raw" class="theme-toggle" type="button">追加</button>
               </div>
+              <p class="meta">スペース区切りでも / 形式でも入力できます。</p>
             </div>
 
             <h3>コマンド一覧（<span id="cmd-count">0</span> / 10）</h3>
