@@ -5,9 +5,11 @@ import {
   defaultSelectIndex,
   describeCommand,
   formatApiTime,
+  fromWireCommand,
   parseYouTubeId,
   speechTextWithTime,
   toApiTime,
+  toWireCommand,
 } from "../src/builder.js";
 
 const catalog = {
@@ -106,5 +108,26 @@ describe("speechTextWithTime", () => {
 
   it("returns the text unchanged without a valid time", () => {
     expect(speechTextWithTime("", "テスト")).toBe("テスト");
+  });
+});
+
+describe("wire command forms", () => {
+  it("converts path form to space form for the backend", () => {
+    expect(toWireCommand("/switchbot-command/-d/X/-c/turnOff")).toBe(
+      "switchbot-command -d X -c turnOff"
+    );
+    expect(toWireCommand("/hue/lights/off")).toBe("hue lights off");
+  });
+
+  it("round-trips a speech command whose text is URL-encoded", () => {
+    const cmd = buildSpeechCommand("/speak/-h/192.0.2.1/-v/60/-s/", "行ってきます");
+    expect(fromWireCommand(toWireCommand(cmd))).toBe(cmd);
+  });
+
+  it("converts the space form back and passes other input through", () => {
+    expect(fromWireCommand("hue lights off")).toBe("/hue/lights/off");
+    expect(fromWireCommand("/hue/lights/off")).toBe("/hue/lights/off");
+    expect(fromWireCommand("https://example.com/x")).toBe("https://example.com/x");
+    expect(fromWireCommand("おはよう")).toBe("おはよう");
   });
 });

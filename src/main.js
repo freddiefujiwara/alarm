@@ -10,8 +10,10 @@ import {
   defaultSelectIndex,
   describeCommand,
   formatApiTime,
+  fromWireCommand,
   speechTextWithTime,
   toApiTime,
+  toWireCommand,
 } from "./builder.js";
 
 const $ = (id) => document.getElementById(id);
@@ -131,6 +133,26 @@ document.querySelectorAll('input[name="mode"]').forEach((radio) => {
   radio.addEventListener("change", renderMode);
 });
 
+const builderPanels = {
+  speech: $("builder-speech"),
+  youtube: $("builder-youtube"),
+  device: $("builder-device"),
+  raw: $("builder-raw"),
+};
+function selectBuilderTab(name) {
+  document.querySelectorAll("[data-builder-tab]").forEach((btn) => {
+    const active = btn.dataset.builderTab === name;
+    btn.classList.toggle("active", active);
+    btn.setAttribute("aria-selected", String(active));
+  });
+  Object.entries(builderPanels).forEach(([key, panel]) => {
+    panel.hidden = key !== name;
+  });
+}
+document.querySelectorAll("[data-builder-tab]").forEach((btn) => {
+  btn.addEventListener("click", () => selectBuilderTab(btn.dataset.builderTab));
+});
+
 $("add-speech").addEventListener("click", () => {
   const speaker = catalog.speech[Number(speechDeviceEl.value || 0)];
   const text = speechCmdTextEl.value.trim();
@@ -152,9 +174,9 @@ $("add-youtube").addEventListener("click", () => {
 });
 
 $("add-raw").addEventListener("click", () => {
-  const value = rawCommandEl.value.trim();
+  const value = fromWireCommand(rawCommandEl.value.trim());
   if (!value.startsWith("/")) {
-    formStatusEl.textContent = "コマンドは / から始まるパスで入力してください。";
+    formStatusEl.textContent = "コマンドはスペース区切り（switchbot-command -d …）か / 形式で入力してください。";
     return;
   }
   addCommands([value]);
@@ -183,7 +205,9 @@ async function loadList() {
       time.textContent = formatApiTime(alarm.time);
       const cmds = document.createElement("div");
       cmds.className = "alarm-commands";
-      cmds.textContent = alarm.commands.map((c) => describeCommand(c, catalog)).join(" / ");
+      cmds.textContent = alarm.commands
+        .map((c) => describeCommand(fromWireCommand(c), catalog))
+        .join(" / ");
       left.append(time, cmds);
       const del = document.createElement("button");
       del.type = "button";
@@ -228,7 +252,7 @@ registerBtn.addEventListener("click", async () => {
       setStatus("コマンドを1つ以上追加してください。", true);
       return;
     }
-    body.commands = commands;
+    body.commands = commands.map(toWireCommand);
   }
   registerBtn.disabled = true;
   setStatus("登録中…");
