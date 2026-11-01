@@ -1,0 +1,122 @@
+<!doctype html>
+<html lang="ja">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
+    <meta http-equiv="Pragma" content="no-cache" />
+    <meta http-equiv="Expires" content="0" />
+    <title>アラーム</title>
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="アラーム" />
+    <meta property="og:description" content="アラームの設定ページ" />
+    <meta property="og:url" content="https://freddiefujiwara.com/alarm/" />
+    <meta property="og:image" content="https://freddiefujiwara.com/alarm/ogp.png" />
+    <meta name="twitter:card" content="summary" />
+    <meta name="twitter:title" content="アラーム" />
+    <meta name="twitter:description" content="アラームの設定ページ" />
+    <meta name="twitter:image" content="https://freddiefujiwara.com/alarm/ogp.png" />
+    <link rel="icon"
+  href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='12' fill='%23000'/%3E%3Ctext x='32' y='42' font-size='34' text-anchor='middle' fill='white' font-family='system-ui'%3EF%3C/text%3E" />
+    <script src="https://accounts.google.com/gsi/client" async defer></script>
+    <script type="module" crossorigin src="/alarm/assets/index-CcXzDT8t.js"></script>
+    <link rel="stylesheet" crossorigin href="/alarm/assets/index-BkaBSGAZ.css">
+  </head>
+  <body>
+    <div class="layout">
+      <header class="header">
+        <h1>アラーム</h1>
+        <div class="header-actions">
+          <div class="header-buttons">
+            <button id="theme-toggle" class="theme-toggle" type="button">ライト</button>
+            <button id="logout" class="theme-toggle" type="button" hidden>ログアウト</button>
+          </div>
+        </div>
+      </header>
+      <main>
+        <section id="gate" class="table-wrap auth-gate">
+          <h2 class="section-title">Googleログインが必要です</h2>
+          <p class="meta">許可されたアカウントでサインインしてください。</p>
+          <div id="signin" class="google-login-button"></div>
+          <p id="gate-error" class="error"></p>
+        </section>
+
+        <section id="list-section" class="table-wrap" hidden>
+          <div class="section-head">
+            <h2 class="section-title">設定中のアラーム</h2>
+            <button id="reload" class="theme-toggle" type="button">再読み込み</button>
+          </div>
+          <p id="account" class="meta"></p>
+          <div id="alarm-list"></div>
+          <p id="list-status" class="meta"></p>
+        </section>
+
+        <section id="form-section" class="table-wrap" hidden>
+          <h2 class="section-title">新しいアラーム</h2>
+          <div class="field-row">
+            <label>日付 <input id="date" type="date" /></label>
+            <label>時刻 <input id="time" type="time" /></label>
+          </div>
+
+          <div class="field-row" role="radiogroup" aria-label="種類">
+            <label><input type="radio" name="mode" value="speech" checked /> 読み上げ</label>
+            <label><input type="radio" name="mode" value="commands" /> コマンド</label>
+          </div>
+
+          <div id="speech-panel">
+            <label class="block-label" for="speech-text">読み上げる文（任意）</label>
+            <input id="speech-text" type="text" placeholder="空なら時刻だけを読み上げます" />
+            <p class="meta">「◯時◯分です。」に続けて読み上げます。</p>
+          </div>
+
+          <div id="commands-panel" hidden>
+            <div class="builder-block">
+              <h3>発話</h3>
+              <div class="field-row">
+                <select id="speech-device" aria-label="スピーカー"></select>
+                <input id="speech-cmd-text" type="text" placeholder="読み上げる文" />
+                <button id="add-speech" class="theme-toggle" type="button">追加</button>
+              </div>
+              <p class="meta">入力した文をそのまま読み上げます（時刻の前置きはありません）。</p>
+            </div>
+
+            <div class="builder-block">
+              <h3>YouTube</h3>
+              <div class="field-row">
+                <select id="youtube-device" aria-label="再生先"></select>
+                <input id="youtube-url" type="url" placeholder="YouTube URL" />
+                <button id="add-youtube" class="theme-toggle" type="button">追加</button>
+              </div>
+            </div>
+
+            <div class="builder-block">
+              <h3>機器</h3>
+              <div class="field-row">
+                <select id="device-select" aria-label="機器"></select>
+              </div>
+              <div id="device-actions" class="field-row"></div>
+            </div>
+
+            <div class="builder-block">
+              <h3>コマンド直接入力</h3>
+              <div class="field-row">
+                <input id="raw-command" type="text" placeholder="/hue/lights/off" />
+                <button id="add-raw" class="theme-toggle" type="button">追加</button>
+              </div>
+            </div>
+
+            <h3>コマンド一覧（<span id="cmd-count">0</span> / 10）</h3>
+            <div id="cmd-list"></div>
+          </div>
+
+          <div class="composer-row">
+            <span id="form-status" class="meta"></span>
+            <button id="register" class="post-button" type="button">登録する</button>
+          </div>
+          <div id="status"></div>
+        </section>
+      </main>
+    </div>
+
+  </body>
+</html>
