@@ -72,6 +72,28 @@ function safeDecode(value) {
   }
 }
 
+// Commands are stored by the backend in a space-separated form that
+// reads like a command line ("switchbot-command -d X -c turnOff");
+// the page builds and describes them in path form
+// ("/switchbot-command/-d/X/-c/turnOff"). These convert between the
+// two. Speech text is URL-encoded inside the command, so it never
+// contains a literal "/" or " " and the mapping is exact.
+export function toWireCommand(command) {
+  return command.replace(/^\//, "").split("/").join(" ");
+}
+
+// The reverse of toWireCommand. Path-form and full-URL inputs pass
+// through unchanged, and anything whose first token is not an ASCII
+// command name (for example Japanese speech text) is left as is.
+export function fromWireCommand(command) {
+  if (command.startsWith("/") || command.includes("://")) return command;
+  const tokens = command.split(/ +/).filter((t) => t.length > 0);
+  if (tokens.length >= 2 && /^[A-Za-z0-9][A-Za-z0-9-]*$/.test(tokens[0])) {
+    return `/${tokens.join("/")}`;
+  }
+  return command;
+}
+
 // Prefix a spoken text with the alarm time, in the same wording the
 // alarm backend uses for text alarms: 12-hour clock, "ちょうど" on
 // the hour — for example "7時30分です。" or "1時ちょうどです。".

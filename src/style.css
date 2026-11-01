@@ -175,13 +175,34 @@ input[type="url"] {
   width: 100%;
 }
 
-.builder-block {
-  border-top: 1px solid var(--border);
-  padding: 8px 0 4px;
+.builder-tabs {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
   margin-top: 12px;
 }
 
-.builder-block h3,
+.builder-tab {
+  font: inherit;
+  color: var(--text);
+  background: var(--surface-elevated);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  padding: 6px 16px;
+  cursor: pointer;
+}
+
+.builder-tab.active {
+  background: var(--primary);
+  border-color: var(--primary);
+  color: #ffffff;
+  font-weight: 600;
+}
+
+.builder-block {
+  padding: 8px 0 4px;
+}
+
 #commands-panel h3 {
   margin: 8px 0 4px;
   font-size: 1rem;
