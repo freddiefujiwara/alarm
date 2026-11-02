@@ -48,6 +48,26 @@ export function buildYouTubeCommand(prefix, youtubeUrl) {
   return id ? prefix + id : null;
 }
 
+// Volumes offered by the speech / YouTube volume pulldowns: 0-100 in
+// steps of 10.
+export const VOLUME_STEPS = [0, 10, 20, 30, 40, 50, 60, 70, 80, 90, 100];
+
+// The volume embedded in a catalog prefix (".../-v/60/..."), or null
+// when the prefix carries no volume segment.
+export function prefixVolume(prefix) {
+  const m = /\/-v\/(\d+)(?=\/)/.exec(prefix || "");
+  return m ? Number(m[1]) : null;
+}
+
+// The prefix with its -v segment replaced by the chosen volume.
+// Prefixes without a volume segment, and volumes outside 0-100,
+// pass through unchanged.
+export function withVolume(prefix, volume) {
+  const v = Number(volume);
+  if (!Number.isInteger(v) || v < 0 || v > 100) return prefix;
+  return String(prefix || "").replace(/\/-v\/\d+(?=\/)/, `/-v/${v}`);
+}
+
 // "2026-11-02" + "06:52" -> "20261102-06:52" (the alarm-gas format).
 // Returns null for values a date/time input would never produce.
 export function toApiTime(dateValue, timeValue) {
@@ -121,22 +141,48 @@ export function defaultSelectIndex(items, preferredId) {
   return index >= 0 ? index : 0;
 }
 
+// Match a command against a catalog prefix whose -v/<n> segment may
+// hold any volume (the builder lets the user override the catalog
+// default). Returns { rest, volume } or null; volume is null when the
+// prefix carries no volume segment.
+function matchPrefix(command, prefix) {
+  const at = (prefix || "").indexOf("/-v/");
+  if (at < 0) {
+    return command.startsWith(prefix)
+      ? { rest: command.slice(prefix.length), volume: null }
+      : null;
+  }
+  const head = prefix.slice(0, at + 4);
+  const digits = /^\d+/.exec(prefix.slice(at + 4));
+  const tail = prefix.slice(at + 4 + (digits ? digits[0].length : 0));
+  if (!command.startsWith(head)) return null;
+  const own = /^\d+/.exec(command.slice(head.length));
+  if (!own) return null;
+  const after = command.slice(head.length + own[0].length);
+  if (!after.startsWith(tail)) return null;
+  return { rest: after.slice(tail.length), volume: Number(own[0]) };
+}
+
 // A short human label for one stored command, used in the alarm list
 // and in the builder's command chips:
-// - speech commands  -> 発話（speaker）: text
-// - YouTube commands -> YouTube（device）: video id
+// - speech commands  -> 発話（speaker・音量n）: text
+// - YouTube commands -> YouTube（device・音量n）: video id
 // - a command that appears in exactly one catalog action -> its label
 // - anything else    -> the raw path
 export function describeCommand(command, catalog) {
   const cat = catalog || {};
   for (const speaker of cat.speech || []) {
-    if (command.startsWith(speaker.prefix)) {
-      return `発話（${speaker.label}）: ${safeDecode(command.slice(speaker.prefix.length))}`;
+    const m = matchPrefix(command, speaker.prefix);
+    if (m) {
+      const who = m.volume === null ? speaker.label : `${speaker.label}・音量${m.volume}`;
+      return `発話（${who}）: ${safeDecode(m.rest)}`;
     }
   }
   for (const target of cat.youtube || []) {
-    if (command.startsWith(target.prefix)) {
-      return `YouTube（${target.label}）: ${command.slice(target.prefix.length)}`;
+    const m = matchPrefix(command, target.prefix);
+    if (m) {
+      const who = m.volume === null ? target.label : `${target.label}・音量${m.volume}`;
+      return `YouTube（${who}）: ${m.rest}`;
     }
   }
   const matches = [];
