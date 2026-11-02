@@ -12,6 +12,7 @@ import {
 } from "./share.js";
 import {
   MAX_COMMANDS,
+  VOLUME_STEPS,
   WEEKDAY_LABELS,
   buildSpeechCommand,
   buildYouTubeCommand,
@@ -21,10 +22,12 @@ import {
   formatApiTime,
   formatUntilDate,
   fromWireCommand,
+  prefixVolume,
   speechTextWithTime,
   toApiDate,
   toApiTime,
   toWireCommand,
+  withVolume,
 } from "./builder.js";
 
 const $ = (id) => document.getElementById(id);
@@ -48,8 +51,10 @@ const speechTextEl = $("speech-text");
 const speechPanelEl = $("speech-panel");
 const commandsPanelEl = $("commands-panel");
 const speechDeviceEl = $("speech-device");
+const speechVolumeEl = $("speech-volume");
 const speechCmdTextEl = $("speech-cmd-text");
 const youtubeDeviceEl = $("youtube-device");
+const youtubeVolumeEl = $("youtube-volume");
 const youtubeUrlEl = $("youtube-url");
 const deviceSelectEl = $("device-select");
 const deviceActionsEl = $("device-actions");
@@ -315,18 +320,49 @@ document.querySelectorAll("[data-builder-tab]").forEach((btn) => {
   btn.addEventListener("click", () => selectBuilderTab(btn.dataset.builderTab));
 });
 
+// Volume pulldowns (0-100 in steps of 10). The pulldown starts at
+// the volume embedded in the selected catalog prefix and follows the
+// speaker / target selection; the user can override it per command.
+function fillVolumeSelect(el) {
+  el.innerHTML = "";
+  for (const v of VOLUME_STEPS) {
+    const opt = document.createElement("option");
+    opt.value = String(v);
+    opt.textContent = `音量${v}`;
+    el.appendChild(opt);
+  }
+}
+
+function syncVolume(deviceEl, volumeEl, items) {
+  const item = items[Number(deviceEl.value || 0)];
+  const v = item ? prefixVolume(item.prefix) : null;
+  if (v !== null) volumeEl.value = String(v);
+}
+
+speechDeviceEl.addEventListener("change", () =>
+  syncVolume(speechDeviceEl, speechVolumeEl, catalog.speech),
+);
+youtubeDeviceEl.addEventListener("change", () =>
+  syncVolume(youtubeDeviceEl, youtubeVolumeEl, catalog.youtube),
+);
+
 $("add-speech").addEventListener("click", () => {
   const speaker = catalog.speech[Number(speechDeviceEl.value || 0)];
   const text = speechCmdTextEl.value.trim();
   if (!speaker) return;
-  addCommands([buildSpeechCommand(speaker.prefix, speechTextWithTime(timeEl.value, text))]);
+  addCommands([
+    buildSpeechCommand(
+      withVolume(speaker.prefix, speechVolumeEl.value),
+      speechTextWithTime(timeEl.value, text),
+    ),
+  ]);
   speechCmdTextEl.value = "";
 });
 
 $("add-youtube").addEventListener("click", () => {
   const target = catalog.youtube[Number(youtubeDeviceEl.value || 0)];
   if (!target) return;
-  const cmd = buildYouTubeCommand(target.prefix, youtubeUrlEl.value);
+  const cmd = buildYouTubeCommand(withVolume(target.prefix, youtubeVolumeEl.value), youtubeUrlEl.value);
   if (!cmd) {
     formStatusEl.textContent = "YouTube URL から動画IDを取得できませんでした。";
     return;
@@ -479,6 +515,10 @@ function initForm() {
   timeEl.value = `${pad(now.getHours())}:${pad(now.getMinutes())}`;
   fillSelect(speechDeviceEl, catalog.speech, "tatami");
   fillSelect(youtubeDeviceEl, catalog.youtube, "tatami");
+  fillVolumeSelect(speechVolumeEl);
+  fillVolumeSelect(youtubeVolumeEl);
+  syncVolume(speechDeviceEl, speechVolumeEl, catalog.speech);
+  syncVolume(youtubeDeviceEl, youtubeVolumeEl, catalog.youtube);
   fillSelect(deviceSelectEl, [...catalog.devices, ...catalog.groups]);
   renderDeviceActions();
   renderCommands();

@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  VOLUME_STEPS,
   buildSpeechCommand,
   buildYouTubeCommand,
   defaultSelectIndex,
@@ -7,12 +8,14 @@ import {
   formatApiTime,
   fromWireCommand,
   parseYouTubeId,
+  prefixVolume,
   speechTextWithTime,
   describeWeekdays,
   formatUntilDate,
   toApiDate,
   toApiTime,
   toWireCommand,
+  withVolume,
 } from "../src/builder.js";
 
 const catalog = {
@@ -68,13 +71,36 @@ describe("time conversion", () => {
   });
 });
 
+describe("volume helpers", () => {
+  it("offers 0-100 in steps of 10", () => {
+    expect(VOLUME_STEPS).toEqual([0, 10, 20, 30, 40, 50, 60, 70, 80, 90, 100]);
+  });
+  it("reads the volume embedded in a prefix", () => {
+    expect(prefixVolume("/speak/-h/192.0.2.1/-v/60/-s/")).toBe(60);
+    expect(prefixVolume("/yt/-i/")).toBeNull();
+  });
+  it("replaces the -v segment and leaves other prefixes alone", () => {
+    expect(withVolume("/speak/-h/192.0.2.1/-v/60/-s/", 30)).toBe("/speak/-h/192.0.2.1/-v/30/-s/");
+    expect(withVolume("/speak/-h/192.0.2.1/-v/60/-s/", "0")).toBe("/speak/-h/192.0.2.1/-v/0/-s/");
+    expect(withVolume("/yt/-i/", 30)).toBe("/yt/-i/");
+    expect(withVolume("/speak/-v/60/-s/", 101)).toBe("/speak/-v/60/-s/");
+    expect(withVolume("/speak/-v/60/-s/", -1)).toBe("/speak/-v/60/-s/");
+  });
+});
+
 describe("describeCommand", () => {
-  it("labels speech and YouTube commands", () => {
+  it("labels speech and YouTube commands with their volume", () => {
     const speech = buildSpeechCommand(catalog.speech[0].prefix, "テスト");
-    expect(describeCommand(speech, catalog)).toBe("発話（Nest）: テスト");
+    expect(describeCommand(speech, catalog)).toBe("発話（Nest・音量60）: テスト");
     expect(describeCommand(catalog.youtube[0].prefix + "vid9", catalog)).toBe(
-      "YouTube（畳）: vid9",
+      "YouTube（畳・音量10）: vid9",
     );
+  });
+  it("still labels commands whose volume was overridden in the builder", () => {
+    const speech = buildSpeechCommand(withVolume(catalog.speech[0].prefix, 30), "テスト");
+    expect(describeCommand(speech, catalog)).toBe("発話（Nest・音量30）: テスト");
+    const yt = buildYouTubeCommand(withVolume(catalog.youtube[0].prefix, 100), "https://youtu.be/vid9");
+    expect(describeCommand(yt, catalog)).toBe("YouTube（畳・音量100）: vid9");
   });
   it("labels a command unique to one action, else falls back to the path", () => {
     expect(describeCommand("/fan/setWindSpeed/-p/11", catalog)).toBe("Fan S");
