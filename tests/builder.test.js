@@ -8,6 +8,9 @@ import {
   fromWireCommand,
   parseYouTubeId,
   speechTextWithTime,
+  describeWeekdays,
+  formatUntilDate,
+  toApiDate,
   toApiTime,
   toWireCommand,
 } from "../src/builder.js";
@@ -131,5 +134,23 @@ describe("wire command forms", () => {
     expect(fromWireCommand("/hue/lights/off")).toBe("/hue/lights/off");
     expect(fromWireCommand("https://example.com/x")).toBe("https://example.com/x");
     expect(fromWireCommand("おはよう")).toBe("おはよう");
+  });
+});
+
+describe("recurrence helpers", () => {
+  it("describes weekday sets", () => {
+    expect(describeWeekdays([0, 1, 2, 3, 4, 5, 6])).toBe("毎日");
+    expect(describeWeekdays([5, 4, 3, 2, 1])).toBe("平日のみ");
+    expect(describeWeekdays([6, 0])).toBe("土日のみ");
+    expect(describeWeekdays([1, 3, 5])).toBe("月・水・金");
+    expect(describeWeekdays([0])).toBe("日");
+  });
+
+  it("formats and converts until dates", () => {
+    expect(formatUntilDate("20261231")).toBe("2026/12/31");
+    expect(formatUntilDate("")).toBe("");
+    expect(toApiDate("2026-12-31")).toBe("20261231");
+    expect(toApiDate("")).toBeNull();
+    expect(toApiDate("2026/12/31")).toBeNull();
   });
 });

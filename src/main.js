@@ -12,13 +12,17 @@ import {
 } from "./share.js";
 import {
   MAX_COMMANDS,
+  WEEKDAY_LABELS,
   buildSpeechCommand,
   buildYouTubeCommand,
   defaultSelectIndex,
   describeCommand,
+  describeWeekdays,
   formatApiTime,
+  formatUntilDate,
   fromWireCommand,
   speechTextWithTime,
+  toApiDate,
   toApiTime,
   toWireCommand,
 } from "./builder.js";
@@ -33,7 +37,13 @@ const listStatusEl = $("list-status");
 const logoutBtn = $("logout");
 const themeBtn = $("theme-toggle");
 const dateEl = $("date");
+const dateLabelEl = $("date-label");
 const timeEl = $("time");
+const repeatPanelEl = $("repeat-panel");
+const weekdayChipsEl = $("weekday-chips");
+const untilEl = $("until");
+const ruleListEl = $("rule-list");
+const ruleStatusEl = $("rule-status");
 const speechTextEl = $("speech-text");
 const speechPanelEl = $("speech-panel");
 const commandsPanelEl = $("commands-panel");
@@ -186,6 +196,105 @@ document.querySelectorAll('input[name="mode"]').forEach((radio) => {
   radio.addEventListener("change", renderMode);
 });
 
+function currentKind() {
+  return document.querySelector('input[name="kind"]:checked').value;
+}
+
+// Weekdays the rule fires on; all seven by default. The chips toggle
+// days off (for example both weekend days for a weekday-only rule).
+let activeWeekdays = new Set([0, 1, 2, 3, 4, 5, 6]);
+
+function renderWeekdayChips() {
+  weekdayChipsEl.innerHTML = "";
+  WEEKDAY_LABELS.forEach((label, day) => {
+    const chip = document.createElement("button");
+    chip.type = "button";
+    chip.className = "builder-tab" + (activeWeekdays.has(day) ? " active" : "");
+    chip.textContent = label;
+    chip.setAttribute("aria-pressed", String(activeWeekdays.has(day)));
+    chip.addEventListener("click", () => {
+      if (activeWeekdays.has(day)) {
+        if (activeWeekdays.size === 1) {
+          formStatusEl.textContent = "曜日は最低1つ必要です。";
+          return;
+        }
+        activeWeekdays.delete(day);
+      } else {
+        activeWeekdays.add(day);
+      }
+      formStatusEl.textContent = "";
+      renderWeekdayChips();
+    });
+    weekdayChipsEl.appendChild(chip);
+  });
+}
+
+function renderKind() {
+  const repeat = currentKind() === "repeat";
+  repeatPanelEl.hidden = !repeat;
+  dateLabelEl.hidden = repeat;
+}
+document.querySelectorAll('input[name="kind"]').forEach((radio) => {
+  radio.addEventListener("change", renderKind);
+});
+
+async function loadRules() {
+  ruleStatusEl.textContent = "読み込み中…";
+  try {
+    const res = await api({ action: "list_rules" });
+    if (isShareAuthError(res)) {
+      showShareExpired();
+      return;
+    }
+    if (!res.ok) throw new Error(res.error || "unknown error");
+    updateShareBanner(res);
+    ruleListEl.innerHTML = "";
+    if (!res.rules.length) {
+      ruleStatusEl.textContent = "設定中の繰り返しはありません。";
+      return;
+    }
+    ruleStatusEl.textContent = "";
+    res.rules.forEach((rule) => {
+      const row = document.createElement("div");
+      row.className = "alarm-row";
+      const left = document.createElement("div");
+      const time = document.createElement("div");
+      time.className = "alarm-time";
+      time.textContent = `${describeWeekdays(rule.weekdays)} ${rule.time}`;
+      const cmds = document.createElement("div");
+      cmds.className = "alarm-commands";
+      const parts = rule.commands
+        .map((c) => describeCommand(fromWireCommand(c), catalog))
+        .join(" / ");
+      cmds.textContent = rule.until ? `${parts}（${formatUntilDate(rule.until)}まで）` : parts;
+      left.append(time, cmds);
+      const del = document.createElement("button");
+      del.type = "button";
+      del.className = "theme-toggle";
+      del.textContent = "削除";
+      del.addEventListener("click", async () => {
+        del.disabled = true;
+        try {
+          const r = await api({ action: "delete_rule", id: rule.id });
+          if (isShareAuthError(r)) {
+            showShareExpired();
+            return;
+          }
+          if (!r.ok) throw new Error(r.error || "unknown error");
+          await loadRules();
+        } catch (err) {
+          ruleStatusEl.textContent = `削除に失敗しました: ${err.message}`;
+          del.disabled = false;
+        }
+      });
+      row.append(left, del);
+      ruleListEl.appendChild(row);
+    });
+  } catch (err) {
+    ruleStatusEl.textContent = `取得に失敗しました: ${err.message}`;
+  }
+}
+
 const builderPanels = {
   speech: $("builder-speech"),
   youtube: $("builder-youtube"),
@@ -297,16 +406,34 @@ async function loadList() {
   }
 }
 
-$("reload").addEventListener("click", loadList);
+$("reload").addEventListener("click", () => {
+  loadList();
+  loadRules();
+});
 
 registerBtn.addEventListener("click", async () => {
+  const repeat = currentKind() === "repeat";
   const apiTime = toApiTime(dateEl.value, timeEl.value);
-  if (!apiTime) {
+  if (!repeat && !apiTime) {
     setStatus("日付と時刻を入力してください。", true);
     return;
   }
+  if (repeat && !/^\d{2}:\d{2}$/.test(timeEl.value || "")) {
+    setStatus("時刻を入力してください。", true);
+    return;
+  }
   const mode = currentMode();
-  const body = { action: "set", time: apiTime };
+  const body = repeat
+    ? { action: "set_rule", time: timeEl.value, weekdays: [...activeWeekdays].sort((a, b) => a - b) }
+    : { action: "set", time: apiTime };
+  if (repeat && untilEl.value) {
+    const until = toApiDate(untilEl.value);
+    if (!until) {
+      setStatus("終了日の形式が不正です。", true);
+      return;
+    }
+    body.until = until;
+  }
   if (mode === "speech") {
     body.text = speechTextEl.value.trim();
   } else {
@@ -326,10 +453,18 @@ registerBtn.addEventListener("click", async () => {
     }
     if (!res.ok) throw new Error(res.error || "unknown error");
     updateShareBanner(res);
-    setStatus(`${formatApiTime(res.time)} にアラームを登録しました。`);
+    if (repeat) {
+      setStatus(
+        `繰り返しを登録しました（${describeWeekdays(res.rule.weekdays)} ${res.rule.time}` +
+          `${res.rule.until ? `、${formatUntilDate(res.rule.until)}まで` : ""}）。`,
+      );
+      await loadRules();
+    } else {
+      setStatus(`${formatApiTime(res.time)} にアラームを登録しました。`);
+      await loadList();
+    }
     commands = [];
     renderCommands();
-    await loadList();
   } catch (err) {
     setStatus(`登録に失敗しました: ${err.message}`, true);
   } finally {
@@ -348,6 +483,8 @@ function initForm() {
   renderDeviceActions();
   renderCommands();
   renderMode();
+  renderKind();
+  renderWeekdayChips();
 }
 
 // --- Owner-side temporary access link card ---
@@ -441,6 +578,7 @@ function showMain(email) {
   renderIssuedShare();
   initForm();
   loadList();
+  loadRules();
 }
 
 function showShareMain() {
@@ -453,6 +591,7 @@ function showShareMain() {
   accountEl.textContent = "";
   initForm();
   loadList();
+  loadRules();
 }
 
 function showGate() {
