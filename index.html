@@ -19,8 +19,8 @@
     <link rel="icon"
   href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='12' fill='%23000'/%3E%3Ctext x='32' y='42' font-size='34' text-anchor='middle' fill='white' font-family='system-ui'%3EF%3C/text%3E" />
     <script src="https://accounts.google.com/gsi/client" async defer></script>
-    <script type="module" crossorigin src="/alarm/assets/index-tiJxlKKN.js"></script>
-    <link rel="stylesheet" crossorigin href="/alarm/assets/index-B1sPMyRO.css">
+    <script type="module" crossorigin src="/alarm/assets/index-DpEXawHk.js"></script>
+    <link rel="stylesheet" crossorigin href="/alarm/assets/index-D0yT10UG.css">
   </head>
   <body>
     <div class="layout">
@@ -34,6 +34,13 @@
         </div>
       </header>
       <main>
+        <nav id="main-tabs" class="main-tabs" aria-label="画面切り替え" hidden>
+          <button type="button" class="main-tab active" data-main-tab="list" aria-selected="true">一覧</button>
+          <button type="button" class="main-tab" data-main-tab="form" aria-selected="false">登録</button>
+          <button type="button" class="main-tab" data-main-tab="share" aria-selected="false">共有</button>
+        </nav>
+        <div id="status"></div>
+
         <section id="gate" class="table-wrap auth-gate">
           <h2 class="section-title">Googleログインが必要です</h2>
           <p class="meta">許可されたアカウントでサインインしてください。</p>
@@ -139,7 +146,6 @@
             <span id="form-status" class="meta"></span>
             <button id="register" class="post-button" type="button">登録する</button>
           </div>
-          <div id="status"></div>
         </section>
 
         <section id="share-expired" class="table-wrap" hidden>
