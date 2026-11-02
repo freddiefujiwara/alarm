@@ -32,6 +32,7 @@ import {
 
 const $ = (id) => document.getElementById(id);
 const gateEl = $("gate");
+const mainTabsEl = $("main-tabs");
 const listSectionEl = $("list-section");
 const formSectionEl = $("form-section");
 const accountEl = $("account");
@@ -113,8 +114,40 @@ function isShareAuthError(res) {
   );
 }
 
+// --- Main tabs （一覧 / 登録 / 共有） ---
+// The page used to stack every section vertically and got very
+// long. The tab bar switches between the list, the form, and the
+// share card; the share tab exists only for the owner (a share
+// session never sees it).
+let mainTab = "list";
+let shareTabAvailable = false;
+
+function applyMainTab() {
+  document.querySelectorAll("[data-main-tab]").forEach((btn) => {
+    const active = btn.dataset.mainTab === mainTab;
+    btn.classList.toggle("active", active);
+    btn.setAttribute("aria-selected", String(active));
+    if (btn.dataset.mainTab === "share") {
+      btn.hidden = !shareTabAvailable;
+    }
+  });
+  listSectionEl.hidden = mainTab !== "list";
+  formSectionEl.hidden = mainTab !== "form";
+  shareSectionEl.hidden = mainTab !== "share" || !shareTabAvailable;
+}
+
+function selectMainTab(name) {
+  mainTab = name;
+  applyMainTab();
+}
+
+document.querySelectorAll("[data-main-tab]").forEach((btn) => {
+  btn.addEventListener("click", () => selectMainTab(btn.dataset.mainTab));
+});
+
 function showShareExpired() {
   gateEl.hidden = true;
+  mainTabsEl.hidden = true;
   listSectionEl.hidden = true;
   formSectionEl.hidden = true;
   shareSectionEl.hidden = true;
@@ -501,6 +534,7 @@ registerBtn.addEventListener("click", async () => {
     }
     commands = [];
     renderCommands();
+    selectMainTab("list");
   } catch (err) {
     setStatus(`登録に失敗しました: ${err.message}`, true);
   } finally {
@@ -610,9 +644,9 @@ function showMain(email) {
   gateEl.hidden = true;
   shareExpiredEl.hidden = true;
   shareBannerEl.hidden = true;
-  listSectionEl.hidden = false;
-  formSectionEl.hidden = false;
-  shareSectionEl.hidden = false;
+  shareTabAvailable = true;
+  mainTabsEl.hidden = false;
+  applyMainTab();
   logoutBtn.hidden = false;
   accountEl.textContent = "ログイン中：" + email;
   renderIssuedShare();
@@ -624,10 +658,13 @@ function showMain(email) {
 function showShareMain() {
   gateEl.hidden = true;
   shareExpiredEl.hidden = true;
-  shareSectionEl.hidden = true;
+  shareTabAvailable = false;
+  if (mainTab === "share") {
+    mainTab = "list";
+  }
+  mainTabsEl.hidden = false;
+  applyMainTab();
   logoutBtn.hidden = true;
-  listSectionEl.hidden = false;
-  formSectionEl.hidden = false;
   accountEl.textContent = "";
   initForm();
   loadList();
@@ -636,6 +673,7 @@ function showShareMain() {
 
 function showGate() {
   gateEl.hidden = false;
+  mainTabsEl.hidden = true;
   listSectionEl.hidden = true;
   formSectionEl.hidden = true;
   shareSectionEl.hidden = true;

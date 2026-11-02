@@ -32,6 +32,13 @@
         </div>
       </header>
       <main>
+        <nav id="main-tabs" class="main-tabs" aria-label="画面切り替え" hidden>
+          <button type="button" class="main-tab active" data-main-tab="list" aria-selected="true">一覧</button>
+          <button type="button" class="main-tab" data-main-tab="form" aria-selected="false">登録</button>
+          <button type="button" class="main-tab" data-main-tab="share" aria-selected="false">共有</button>
+        </nav>
+        <div id="status"></div>
+
         <section id="gate" class="table-wrap auth-gate">
           <h2 class="section-title">Googleログインが必要です</h2>
           <p class="meta">許可されたアカウントでサインインしてください。</p>
@@ -137,7 +144,6 @@
             <span id="form-status" class="meta"></span>
             <button id="register" class="post-button" type="button">登録する</button>
           </div>
-          <div id="status"></div>
         </section>
 
         <section id="share-expired" class="table-wrap" hidden>
