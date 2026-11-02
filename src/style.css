@@ -204,6 +204,31 @@ input[type="url"] {
   font-weight: 600;
 }
 
+.main-tabs {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-bottom: 12px;
+}
+
+.main-tab {
+  font: inherit;
+  font-size: 1.05rem;
+  color: var(--text);
+  background: var(--surface-elevated);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  padding: 8px 24px;
+  cursor: pointer;
+}
+
+.main-tab.active {
+  background: var(--primary);
+  border-color: var(--primary);
+  color: #ffffff;
+  font-weight: 600;
+}
+
 .builder-block {
   padding: 8px 0 4px;
 }
