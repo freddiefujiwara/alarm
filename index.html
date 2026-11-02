@@ -19,7 +19,7 @@
     <link rel="icon"
   href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='12' fill='%23000'/%3E%3Ctext x='32' y='42' font-size='34' text-anchor='middle' fill='white' font-family='system-ui'%3EF%3C/text%3E" />
     <script src="https://accounts.google.com/gsi/client" async defer></script>
-    <script type="module" crossorigin src="/alarm/assets/index-B0GDEEKO.js"></script>
+    <script type="module" crossorigin src="/alarm/assets/index-DDgBONld.js"></script>
     <link rel="stylesheet" crossorigin href="/alarm/assets/index-B1sPMyRO.css">
   </head>
   <body>
@@ -50,13 +50,32 @@
           <p id="account" class="meta"></p>
           <div id="alarm-list"></div>
           <p id="list-status" class="meta"></p>
+          <h3>繰り返し</h3>
+          <div id="rule-list"></div>
+          <p id="rule-status" class="meta"></p>
         </section>
 
         <section id="form-section" class="table-wrap" hidden>
           <h2 class="section-title">新しいアラーム</h2>
           <div class="field-row">
-            <label>日付 <input id="date" type="date" /></label>
+            <label id="date-label">日付 <input id="date" type="date" /></label>
             <label>時刻 <input id="time" type="time" /></label>
+          </div>
+
+          <div class="field-row" role="radiogroup" aria-label="繰り返し">
+            <label><input type="radio" name="kind" value="once" checked /> 1回のみ</label>
+            <label><input type="radio" name="kind" value="repeat" /> 繰り返し</label>
+          </div>
+
+          <div id="repeat-panel" hidden>
+            <div class="field-row">
+              <span>曜日</span>
+              <span id="weekday-chips"></span>
+            </div>
+            <p class="meta">タップした曜日は鳴りません（全部は外せません）。</p>
+            <div class="field-row">
+              <label>終了日（任意） <input id="until" type="date" /></label>
+            </div>
           </div>
 
           <div class="field-row" role="radiogroup" aria-label="種類">
