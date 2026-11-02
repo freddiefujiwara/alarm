@@ -150,3 +150,28 @@ export function describeCommand(command, catalog) {
   if (matches.length === 1) return matches[0];
   return command;
 }
+
+export const WEEKDAY_LABELS = ["日", "月", "火", "水", "木", "金", "土"];
+
+// Active weekdays -> a short Japanese description: every day, the
+// weekday set, the weekend set, or the joined day labels.
+export function describeWeekdays(weekdays) {
+  const days = [...weekdays].sort((a, b) => a - b);
+  if (days.length === 7) return "毎日";
+  if (days.join(",") === "1,2,3,4,5") return "平日のみ";
+  if (days.join(",") === "0,6") return "土日のみ";
+  return days.map((d) => WEEKDAY_LABELS[d]).join("・");
+}
+
+// "20261231" -> "2026/12/31". Anything else is returned unchanged.
+export function formatUntilDate(value) {
+  const m = /^(\d{4})(\d{2})(\d{2})$/.exec(value || "");
+  return m ? `${m[1]}/${m[2]}/${m[3]}` : value;
+}
+
+// "2026-12-31" (a date input value) -> "20261231" (the alarm-gas
+// format). Returns null for empty or malformed values.
+export function toApiDate(dateValue) {
+  const d = /^(\d{4})-(\d{2})-(\d{2})$/.exec(dateValue || "");
+  return d ? `${d[1]}${d[2]}${d[3]}` : null;
+}
