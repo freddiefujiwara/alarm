@@ -22,6 +22,7 @@ jobs:
 
     - run: npm install
     - run: npm test
+
     - name: Build staging variant
       env:
         VITE_GAS_ENDPOINT: ${{ secrets.STAGING_GAS_ENDPOINT }}
