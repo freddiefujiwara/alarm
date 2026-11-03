@@ -9,9 +9,12 @@
     "build:staging": "vite build --base /alarm/staging/ --outDir dist-staging",
     "preview": "vite preview",
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "test:staging": "playwright test e2e/staging.check.js",
+    "test:smoke": "playwright test e2e/smoke.check.js"
   },
   "devDependencies": {
+    "@playwright/test": "^1.64.1",
     "jsdom": "^28.0.0",
     "vite": "^5.4.11",
     "vitest": "^2.1.8"
