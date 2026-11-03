@@ -29,6 +29,11 @@ import {
   toWireCommand,
   withVolume,
 } from "./builder.js";
+import { isStagingBuild, showStagingBanner } from "./staging-banner.js";
+
+if (isStagingBuild()) {
+  showStagingBanner();
+}
 
 const $ = (id) => document.getElementById(id);
 const gateEl = $("gate");

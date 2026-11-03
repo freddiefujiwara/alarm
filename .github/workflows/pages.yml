@@ -29,10 +29,20 @@ jobs:
         VITE_GAS_ENDPOINT: ${{ secrets.GAS_ENDPOINT }}
         VITE_ALARM_COMMANDS: ${{ secrets.ALARM_COMMANDS }}
 
+    - name: Build staging variant into dist/staging
+      env:
+        VITE_GAS_ENDPOINT: ${{ secrets.STAGING_GAS_ENDPOINT }}
+        VITE_ALARM_COMMANDS: ${{ secrets.ALARM_COMMANDS }}
+        VITE_STAGING: "1"
+      run: |
+        npm run build:staging
+        mkdir -p dist/staging
+        cp -r dist-staging/* dist/staging/
+
     - name: Generate OGP Image from GAS JSON
       if: github.event_name == 'push'
       run: |
-        JSON_RESPONSE=$(curl -L -s "https://script.google.com/macros/s/AKfycbzbMAKxkzHlwN8SY7ygJA34xYESMNNdkGNt8vv1XMcZSksgHsUwOxCCdP-wgg6fv7M/exec?t=%E3%82%A2%E3%83%A9%E3%83%BC%E3%83%A0")
+        JSON_RESPONSE=$(curl -L -s "https://script.google.com/macros/s/AKfycbzMAKxkzHi1wN8SY7yqJA34xYESMNNdkGNt8vv1XMcZskgHsUwOxCCdP-wgg6fv7M/exec?t=%E3%82%A2%E3%83%A9%E3%83%BC%E3%83%A0")
         echo $JSON_RESPONSE | jq -r '.png' | base64 -d > ./dist/ogp.png
         ls -lh ./dist/ogp.png
 
