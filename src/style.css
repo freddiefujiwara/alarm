@@ -284,6 +284,25 @@ input[type="url"] {
   overflow-wrap: anywhere;
 }
 
+.exec-curl {
+  margin-top: 6px;
+}
+
+.exec-block {
+  margin-top: 6px;
+}
+
+.exec-pre {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 8px 12px;
+  margin: 0 0 6px;
+  font-size: 0.8rem;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
 .cmd-chip {
   display: flex;
   justify-content: space-between;

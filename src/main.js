@@ -26,6 +26,7 @@ import {
   speechTextWithTime,
   toApiDate,
   toApiTime,
+  toExecCurlBlock,
   toWireCommand,
   withVolume,
 } from "./builder.js";
@@ -281,6 +282,54 @@ document.querySelectorAll('input[name="kind"]').forEach((radio) => {
   radio.addEventListener("change", renderKind);
 });
 
+// Under a list row's label, a collapsed block with the row's commands
+// as curl lines that can be pasted into a terminal on the home server.
+// Rendered only when an exec base is configured (CONFIG.EXEC_BASE) and
+// at least one command converts; the copy button copies every line.
+function appendExecCurl(container, wires) {
+  const text = toExecCurlBlock(wires, CONFIG.EXEC_BASE);
+  if (!text) return;
+  const wrap = document.createElement("div");
+  wrap.className = "exec-curl";
+  const toggle = document.createElement("button");
+  toggle.type = "button";
+  toggle.className = "theme-toggle";
+  toggle.textContent = "curlを表示";
+  const block = document.createElement("div");
+  block.className = "exec-block";
+  block.hidden = true;
+  const pre = document.createElement("pre");
+  pre.className = "exec-pre";
+  pre.textContent = text;
+  const copy = document.createElement("button");
+  copy.type = "button";
+  copy.className = "theme-toggle";
+  copy.textContent = "コピー";
+  copy.addEventListener("click", async () => {
+    try {
+      await navigator.clipboard.writeText(text);
+      copy.textContent = "コピーしました";
+      setTimeout(() => {
+        copy.textContent = "コピー";
+      }, 2000);
+    } catch {
+      // Clipboard unavailable: select the block for manual copying.
+      const range = document.createRange();
+      range.selectNodeContents(pre);
+      const sel = window.getSelection();
+      sel.removeAllRanges();
+      sel.addRange(range);
+    }
+  });
+  toggle.addEventListener("click", () => {
+    block.hidden = !block.hidden;
+    toggle.textContent = block.hidden ? "curlを表示" : "curlを隠す";
+  });
+  block.append(pre, copy);
+  wrap.append(toggle, block);
+  container.appendChild(wrap);
+}
+
 async function loadRules() {
   ruleStatusEl.textContent = "読み込み中…";
   try {
@@ -311,6 +360,7 @@ async function loadRules() {
         .join(" / ");
       cmds.textContent = rule.until ? `${parts}（${formatUntilDate(rule.until)}まで）` : parts;
       left.append(time, cmds);
+      appendExecCurl(left, rule.commands);
       const del = document.createElement("button");
       del.type = "button";
       del.className = "theme-toggle";
@@ -450,6 +500,7 @@ async function loadList() {
         .map((c) => describeCommand(fromWireCommand(c), catalog))
         .join(" / ");
       left.append(time, cmds);
+      appendExecCurl(left, alarm.commands);
       const del = document.createElement("button");
       del.type = "button";
       del.className = "theme-toggle";

@@ -14,6 +14,8 @@ import {
   formatUntilDate,
   toApiDate,
   toApiTime,
+  toExecCurl,
+  toExecCurlBlock,
   toWireCommand,
   withVolume,
 } from "../src/builder.js";
@@ -160,6 +162,58 @@ describe("wire command forms", () => {
     expect(fromWireCommand("/hue/lights/off")).toBe("/hue/lights/off");
     expect(fromWireCommand("https://example.com/x")).toBe("https://example.com/x");
     expect(fromWireCommand("おはよう")).toBe("おはよう");
+  });
+});
+
+describe("exec curl lines", () => {
+  const base = "https://exec.example.test";
+
+  it("renders a speech command with its encoded text", () => {
+    const wire = "google-home-speaker-wrapper -h 192.0.2.10 -v 60 -s " + encodeURIComponent("行ってきます");
+    expect(toExecCurl(wire, base)).toBe(
+      `curl -s "${base}/google-home-speaker-wrapper/-h/192.0.2.10/-v/60/-s/${encodeURIComponent("行ってきます")}"`,
+    );
+  });
+
+  it("renders YouTube and plain-word commands", () => {
+    expect(toExecCurl("youtube-play -h 192.0.2.10 -v 20 -i abc123", base)).toBe(
+      `curl -s "${base}/youtube-play/-h/192.0.2.10/-v/20/-i/abc123"`,
+    );
+    expect(toExecCurl("hue lights off", base)).toBe(`curl -s "${base}/hue/lights/off"`);
+  });
+
+  it("keeps a comma-carrying switchbot-ac argument in one segment", () => {
+    expect(toExecCurl("switchbot-ac -d DEV1 -a 25,2,1,off", base)).toBe(
+      `curl -s "${base}/switchbot-ac/-d/DEV1/-a/25,2,1,off"`,
+    );
+  });
+
+  it("ignores a trailing slash on the base", () => {
+    expect(toExecCurl("hue lights off", base + "/")).toBe(`curl -s "${base}/hue/lights/off"`);
+  });
+
+  it("makes no line for input that fromWireCommand passes through", () => {
+    expect(toExecCurl("/hue/lights/off", base)).toBeNull();
+    expect(toExecCurl("https://example.com/x", base)).toBeNull();
+    expect(toExecCurl("おはよう", base)).toBeNull();
+    expect(toExecCurl("hue", base)).toBeNull();
+    expect(toExecCurl("", base)).toBeNull();
+  });
+
+  it("makes no line when no exec base is configured", () => {
+    expect(toExecCurl("hue lights off", "")).toBeNull();
+    expect(toExecCurlBlock(["hue lights off"], "")).toBe("");
+  });
+
+  it("joins a command list into multiple lines, skipping non-convertible ones", () => {
+    const block = toExecCurlBlock(
+      ["hue lights off", "おはよう", "switchbot-command -d DEV1 -c turnOff"],
+      base,
+    );
+    expect(block).toBe(
+      `curl -s "${base}/hue/lights/off"\ncurl -s "${base}/switchbot-command/-d/DEV1/-c/turnOff"`,
+    );
+    expect(toExecCurlBlock([], base)).toBe("");
   });
 });
 
