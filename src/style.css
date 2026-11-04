@@ -284,8 +284,40 @@ input[type="url"] {
   overflow-wrap: anywhere;
 }
 
-.exec-curl {
-  margin-top: 6px;
+.row-actions {
+  display: flex;
+  gap: 6px;
+  align-items: flex-start;
+  flex: none;
+}
+
+.icon-btn {
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--surface-elevated);
+  color: var(--muted);
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.icon-btn svg {
+  width: 16px;
+  height: 16px;
+}
+
+.icon-btn:hover {
+  color: var(--text);
+}
+
+.icon-btn.active {
+  color: var(--link);
+  border-color: var(--link);
 }
 
 .exec-block {
@@ -297,7 +329,7 @@ input[type="url"] {
   border: 1px solid var(--border);
   border-radius: 12px;
   padding: 8px 12px;
-  margin: 0 0 6px;
+  margin: 0;
   font-size: 0.8rem;
   white-space: pre-wrap;
   overflow-wrap: anywhere;
