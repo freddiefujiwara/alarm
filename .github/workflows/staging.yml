@@ -27,6 +27,7 @@ jobs:
       env:
         VITE_GAS_ENDPOINT: ${{ secrets.STAGING_GAS_ENDPOINT }}
         VITE_ALARM_COMMANDS: ${{ secrets.ALARM_COMMANDS }}
+        VITE_ALARM_EXEC_BASE: ${{ secrets.ALARM_EXEC_BASE }}
         VITE_STAGING: "1"
       run: npm run build:staging
 
