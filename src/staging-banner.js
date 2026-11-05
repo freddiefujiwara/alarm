@@ -20,6 +20,7 @@ export const STAGING_LINKS = [
   ["アラーム", "/alarm/staging/"],
   ["健康", "/health/staging/"],
   ["資産", "/asset/staging/"],
+  ["GA", "/ga/staging/"],
 ];
 
 // The production root of this app. The staging build's base is
@@ -40,7 +41,7 @@ export function showStagingBanner(doc = document) {
     "background:#f7e9e2;color:#8f2a12;text-align:center;font-size:12px;line-height:2.2;letter-spacing:.06em;"
   );
   const label = doc.createElement("span");
-  label.textContent = "STAGING ― これはステージング環境です（本番ではありません）｜ ";
+  label.textContent = "STAGING｜";
   el.appendChild(label);
   STAGING_LINKS.forEach(([text, href], index) => {
     if (index > 0) {

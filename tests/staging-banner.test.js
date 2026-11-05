@@ -20,14 +20,14 @@ describe("showStagingBanner", () => {
     const el = showStagingBanner();
     expect(document.body.firstChild).toBe(el);
     expect(el.textContent).toContain("STAGING");
-    expect(el.textContent).toContain("ステージング環境");
+    expect(el.textContent).toContain("STAGING｜");
   });
 
   it("links to every staging environment", () => {
     document.body.innerHTML = "<main id=\"app\"></main>";
     const el = showStagingBanner();
     const hrefs = [...el.querySelectorAll("a")].map((a) => a.getAttribute("href"));
-    expect(hrefs.slice(0, 7)).toEqual([
+    expect(hrefs.slice(0, 8)).toEqual([
       "/staging/",
       "/blog/staging/",
       "/list-of-stuff/staging/",
@@ -35,6 +35,7 @@ describe("showStagingBanner", () => {
       "/alarm/staging/",
       "/health/staging/",
       "/asset/staging/",
+      "/ga/staging/",
     ]);
   });
 
