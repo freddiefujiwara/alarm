@@ -1,5 +1,9 @@
 import { describe, it, expect } from "vitest";
-import { isStagingBuild, showStagingBanner } from "../src/staging-banner.js";
+import {
+  isStagingBuild,
+  productionUrl,
+  showStagingBanner,
+} from "../src/staging-banner.js";
 
 describe("isStagingBuild", () => {
   it("is true only when VITE_STAGING is exactly '1'", () => {
@@ -23,7 +27,7 @@ describe("showStagingBanner", () => {
     document.body.innerHTML = "<main id=\"app\"></main>";
     const el = showStagingBanner();
     const hrefs = [...el.querySelectorAll("a")].map((a) => a.getAttribute("href"));
-    expect(hrefs).toEqual([
+    expect(hrefs.slice(0, 7)).toEqual([
       "/staging/",
       "/blog/staging/",
       "/list-of-stuff/staging/",
@@ -32,5 +36,26 @@ describe("showStagingBanner", () => {
       "/health/staging/",
       "/asset/staging/",
     ]);
+  });
+
+  it("ends with a red, bold link to this app's production top", () => {
+    document.body.innerHTML = "<main id=\"app\"></main>";
+    const el = showStagingBanner();
+    const links = [...el.querySelectorAll("a")];
+    const prod = links[links.length - 1];
+    expect(prod.textContent).toBe("本番トップ");
+    expect(prod.getAttribute("href")).toBe(productionUrl());
+    expect(prod.getAttribute("style")).toContain("color:#c62828");
+    expect(prod.getAttribute("style")).toContain("font-weight:700");
+    expect(prod.style.fontWeight).toBe("700");
+    expect(el.textContent).toContain("｜ 本番トップ");
+  });
+});
+
+describe("productionUrl", () => {
+  it("drops the trailing staging segment from the base", () => {
+    expect(productionUrl({ BASE_URL: "/blog/staging/" })).toBe("/blog/");
+    expect(productionUrl({ BASE_URL: "/blog/" })).toBe("/blog/");
+    expect(productionUrl({})).toBe("/");
   });
 });

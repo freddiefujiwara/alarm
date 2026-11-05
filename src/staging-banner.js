@@ -22,6 +22,17 @@ export const STAGING_LINKS = [
   ["資産", "/asset/staging/"],
 ];
 
+// The production root of this app. The staging build's base is
+// "/<app>/staging/" (see build:staging), so dropping the trailing
+// "staging/" segment leaves the production root. Derived from
+// BASE_URL so this file can stay identical in every app.
+export function productionUrl(env = import.meta.env) {
+  const base = env?.BASE_URL ?? "/";
+  return base.endsWith("staging/")
+    ? base.slice(0, -"staging/".length)
+    : base;
+}
+
 export function showStagingBanner(doc = document) {
   const el = doc.createElement("div");
   el.setAttribute(
@@ -41,6 +52,16 @@ export function showStagingBanner(doc = document) {
     a.setAttribute("style", "color:#8f2a12;");
     el.appendChild(a);
   });
+  // One link back to this app's own production top, after the
+  // staging links. It is red and bold on purpose: production is the
+  // dangerous side, and the link must never be mistaken for one of
+  // the staging links above.
+  el.appendChild(doc.createTextNode("｜ "));
+  const prod = doc.createElement("a");
+  prod.href = productionUrl();
+  prod.textContent = "本番トップ";
+  prod.setAttribute("style", "color:#c62828;font-weight:700;");
+  el.appendChild(prod);
   doc.body.prepend(el);
   return el;
 }
