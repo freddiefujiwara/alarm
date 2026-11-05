@@ -26,6 +26,7 @@ import {
   speechTextWithTime,
   toApiDate,
   toApiTime,
+  toExecCurlBlock,
   toWireCommand,
   withVolume,
 } from "./builder.js";
@@ -281,6 +282,75 @@ document.querySelectorAll('input[name="kind"]').forEach((radio) => {
   radio.addEventListener("change", renderKind);
 });
 
+// A list row's commands as curl lines that can be pasted into a
+// terminal on the home server. The row's top-right action cluster gets
+// two icon buttons: one toggles the code block under the row's label,
+// the other copies every line without opening the block. Rendered only
+// when an exec base is configured (CONFIG.EXEC_BASE) and at least one
+// command converts.
+const iconSvg_ = (inner) =>
+  `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${inner}</svg>`;
+const CODE_ICON = iconSvg_(
+  '<polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/>',
+);
+const COPY_ICON = iconSvg_(
+  '<rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>',
+);
+const CHECK_ICON = iconSvg_('<polyline points="20 6 9 17 4 12"/>');
+
+function iconButton(svg, label) {
+  const btn = document.createElement("button");
+  btn.type = "button";
+  btn.className = "icon-btn";
+  btn.innerHTML = svg;
+  btn.title = label;
+  btn.setAttribute("aria-label", label);
+  return btn;
+}
+
+function appendExecCurl(container, actions, wires) {
+  const text = toExecCurlBlock(wires, CONFIG.EXEC_BASE);
+  if (!text) return;
+  const block = document.createElement("div");
+  block.className = "exec-block";
+  block.hidden = true;
+  const pre = document.createElement("pre");
+  pre.className = "exec-pre";
+  pre.textContent = text;
+  block.appendChild(pre);
+  container.appendChild(block);
+  const toggle = iconButton(CODE_ICON, "curlを表示");
+  toggle.setAttribute("aria-expanded", "false");
+  toggle.addEventListener("click", () => {
+    block.hidden = !block.hidden;
+    toggle.classList.toggle("active", !block.hidden);
+    toggle.title = block.hidden ? "curlを表示" : "curlを隠す";
+    toggle.setAttribute("aria-label", toggle.title);
+    toggle.setAttribute("aria-expanded", String(!block.hidden));
+  });
+  const copy = iconButton(COPY_ICON, "curlをコピー");
+  copy.addEventListener("click", async () => {
+    try {
+      await navigator.clipboard.writeText(text);
+      copy.innerHTML = CHECK_ICON;
+      copy.classList.add("active");
+      setTimeout(() => {
+        copy.innerHTML = COPY_ICON;
+        copy.classList.remove("active");
+      }, 1600);
+    } catch {
+      // Clipboard unavailable: open the block and select it instead.
+      if (block.hidden) toggle.click();
+      const range = document.createRange();
+      range.selectNodeContents(pre);
+      const sel = window.getSelection();
+      sel.removeAllRanges();
+      sel.addRange(range);
+    }
+  });
+  actions.append(toggle, copy);
+}
+
 async function loadRules() {
   ruleStatusEl.textContent = "読み込み中…";
   try {
@@ -311,6 +381,9 @@ async function loadRules() {
         .join(" / ");
       cmds.textContent = rule.until ? `${parts}（${formatUntilDate(rule.until)}まで）` : parts;
       left.append(time, cmds);
+      const actions = document.createElement("div");
+      actions.className = "row-actions";
+      appendExecCurl(left, actions, rule.commands);
       const del = document.createElement("button");
       del.type = "button";
       del.className = "theme-toggle";
@@ -330,7 +403,8 @@ async function loadRules() {
           del.disabled = false;
         }
       });
-      row.append(left, del);
+      actions.appendChild(del);
+      row.append(left, actions);
       ruleListEl.appendChild(row);
     });
   } catch (err) {
@@ -450,6 +524,9 @@ async function loadList() {
         .map((c) => describeCommand(fromWireCommand(c), catalog))
         .join(" / ");
       left.append(time, cmds);
+      const actions = document.createElement("div");
+      actions.className = "row-actions";
+      appendExecCurl(left, actions, alarm.commands);
       const del = document.createElement("button");
       del.type = "button";
       del.className = "theme-toggle";
@@ -472,7 +549,8 @@ async function loadList() {
           del.disabled = false;
         }
       });
-      row.append(left, del);
+      actions.appendChild(del);
+      row.append(left, actions);
       listEl.appendChild(row);
     });
   } catch (err) {

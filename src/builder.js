@@ -114,6 +114,36 @@ export function fromWireCommand(command) {
   return command;
 }
 
+// One stored (wire-form) command as a copy-paste curl line that runs it
+// directly against the home server, for pasting into a terminal on the
+// server itself. `base` is the exec base URL injected at build time
+// (see config.js EXEC_BASE); the path form is derived with
+// fromWireCommand. Returns null when no line should be produced: no
+// base configured, or the input is one fromWireCommand would pass
+// through unchanged (already path form, a full URL, or free text whose
+// first token is not an ASCII command name) — those were never stored
+// in wire form, so a curl line for them would be a guess.
+export function toExecCurl(wire, base) {
+  if (!base || typeof wire !== "string") return null;
+  if (wire.startsWith("/") || wire.includes("://")) return null;
+  const tokens = wire.split(/ +/).filter((t) => t.length > 0);
+  if (tokens.length < 2 || !/^[A-Za-z0-9][A-Za-z0-9-]*$/.test(tokens[0])) {
+    return null;
+  }
+  const origin = String(base).replace(/\/+$/, "");
+  return `curl -s "${origin}${fromWireCommand(wire)}"`;
+}
+
+// The curl lines for a whole command list, one line per command, so a
+// multi-command alarm can be pasted and run in order. Commands that do
+// not convert are skipped; the result is "" when nothing converts.
+export function toExecCurlBlock(wires, base) {
+  return (wires || [])
+    .map((wire) => toExecCurl(wire, base))
+    .filter((line) => line !== null)
+    .join("\n");
+}
+
 // What a text-less alarm says after the time: a nudge to get moving.
 // Mirrors EMPTY_TEXT_SUFFIX_ in the alarm backend.
 export const EMPTY_TEXT_SUFFIX = "時間ですよ。時間ですよ。そろそろ時間ですよ。";

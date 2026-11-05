@@ -10,6 +10,9 @@
 // environment variables:
 //   VITE_GAS_ENDPOINT    the alarm-gas /exec URL
 //   VITE_ALARM_COMMANDS  the command catalog as a JSON string
+//   VITE_ALARM_EXEC_BASE the home server base URL used only to render
+//     stored commands as copy-paste curl lines in the list view; when
+//     it is not set, that display is hidden entirely.
 // For local development, put the same variables in .env.local
 // (git-ignored). Authorization itself is enforced server-side by
 // alarm-gas, which verifies the ID token before every action.
@@ -35,4 +38,5 @@ export const CONFIG = {
     "728154182351-5ribj1diqcp8jpfo3rnqk9rei1aka98t.apps.googleusercontent.com",
   GAS_ENDPOINT: import.meta.env.VITE_GAS_ENDPOINT || "",
   COMMANDS: parseCatalog(import.meta.env.VITE_ALARM_COMMANDS),
+  EXEC_BASE: import.meta.env.VITE_ALARM_EXEC_BASE || "",
 };
