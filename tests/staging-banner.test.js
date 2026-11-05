@@ -43,12 +43,12 @@ describe("showStagingBanner", () => {
     const el = showStagingBanner();
     const links = [...el.querySelectorAll("a")];
     const prod = links[links.length - 1];
-    expect(prod.textContent).toBe("本番トップ");
+    expect(prod.textContent).toBe("本番");
     expect(prod.getAttribute("href")).toBe(productionUrl());
     expect(prod.getAttribute("style")).toContain("color:#c62828");
     expect(prod.getAttribute("style")).toContain("font-weight:700");
     expect(prod.style.fontWeight).toBe("700");
-    expect(el.textContent).toContain("｜ 本番トップ");
+    expect(el.textContent).toContain("｜ 本番");
   });
 });
 

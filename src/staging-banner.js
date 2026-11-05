@@ -59,7 +59,7 @@ export function showStagingBanner(doc = document) {
   el.appendChild(doc.createTextNode("｜ "));
   const prod = doc.createElement("a");
   prod.href = productionUrl();
-  prod.textContent = "本番トップ";
+  prod.textContent = "本番";
   prod.setAttribute("style", "color:#c62828;font-weight:700;");
   el.appendChild(prod);
   doc.body.prepend(el);
