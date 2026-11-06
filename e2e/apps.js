@@ -34,6 +34,16 @@ export const GAS = {
     staging:
       "AKfycbwaNgQjqAJCOKt8ReWAE6uhEZzEBuRRsnRbRFsa16RpVQSs6KSRVCPNZnalOXZWy0CE",
   },
+  ga: {
+    prod: "AKfycbypis7IqAtM2u0_h7ysiZ5UgztUEwNYJ1zPMnr8IbTBXiyfiapfRMtD_9CxVpc5G8YVzQ",
+    staging:
+      "AKfycbyRCLUuKbRElDdlUc0Rqh6Qxdfxd5R8hICpRe-keEyGCe1z-mC9gfN798MlXfQgY8kw",
+  },
+  bucket: {
+    prod: "AKfycbwUF0Lt3OG5kE0IqTyrkciEcUFIXZULI7aM-xJtR_4nrvqOSlIOVKADtFolAvSwFko6Vw",
+    staging:
+      "AKfycbylntjD8K8_9bIHFy2edMYYXoufciAFL5uxKcGiHuqKujif8nGoWu7HKoXG7t2p-Lcg",
+  },
 };
 
 export const execUrl = (id) => `https://script.google.com/macros/s/${id}/exec`;
@@ -49,6 +59,8 @@ export const APPS = [
   { name: "alarm", path: "/alarm/", gas: "alarm", dataOnLoad: false },
   { name: "health", path: "/health/", gas: "health", dataOnLoad: true },
   { name: "asset", path: "/asset/", gas: "asset", dataOnLoad: true },
+  { name: "ga", path: "/ga/", gas: "ga", dataOnLoad: true },
+  { name: "bucket", path: "/bucket-list/", gas: "bucket", dataOnLoad: false },
 ];
 
 export const stagingPath = (app) => `${app.path}staging/`;
