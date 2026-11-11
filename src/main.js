@@ -31,6 +31,13 @@ import {
   withVolume,
 } from "./builder.js";
 import { isStagingBuild, showStagingBanner } from "./staging-banner.js";
+import {
+  loadSavedSessionToken,
+  loadSavedSessionEmail,
+  saveSessionToken,
+  saveSessionEmail,
+  clearSavedSession,
+} from "./session.js";
 
 if (isStagingBuild()) {
   showStagingBanner();
@@ -38,6 +45,7 @@ if (isStagingBuild()) {
 
 const $ = (id) => document.getElementById(id);
 const gateEl = $("gate");
+const gateErrorEl = $("gate-error");
 const mainTabsEl = $("main-tabs");
 const listSectionEl = $("list-section");
 const formSectionEl = $("form-section");
@@ -83,7 +91,7 @@ const shareExpiresEl = $("share-expires");
 const shareCopyBtn = $("share-copy");
 
 const catalog = CONFIG.COMMANDS;
-let idToken = null;
+let sessionToken = null;
 let commands = [];
 // Temporary access link state. shareToken is set when the page is
 // opened via a #share= link (share mode); issuedShare holds the link
@@ -106,18 +114,43 @@ function setStatus(message, isError = false) {
 }
 
 // One admin API call, authenticated with the share token in share
-// mode and with the Google ID token otherwise.
+// mode and with the owner session token otherwise.
 function api(body) {
   if (shareToken) {
     return callApi(CONFIG.GAS_ENDPOINT, null, { ...body, share_token: shareToken });
   }
-  return callApi(CONFIG.GAS_ENDPOINT, idToken, body);
+  return callApi(CONFIG.GAS_ENDPOINT, null, { ...body, session_token: sessionToken });
 }
 
 function isShareAuthError(res) {
   return Boolean(
     shareToken && res && typeof res.error === "string" && res.error.includes("share session"),
   );
+}
+
+function isSessionAuthError(res) {
+  return Boolean(sessionToken && res && res.error === "session expired or invalid");
+}
+
+// The saved owner session turned out to be dead (expired or
+// revoked): drop it and return to the sign-in gate.
+function expireSession() {
+  sessionToken = null;
+  clearSavedSession();
+  showGate();
+  initGoogleSignIn();
+}
+
+function initGoogleSignIn() {
+  google.accounts.id.initialize({
+    client_id: CONFIG.GOOGLE_CLIENT_ID,
+    callback: onCredential,
+  });
+  google.accounts.id.renderButton(document.getElementById("signin"), {
+    theme: "outline",
+    size: "large",
+    text: "signin_with",
+  });
 }
 
 // --- Main tabs （一覧 / 登録 / 共有） ---
@@ -359,6 +392,10 @@ async function loadRules() {
       showShareExpired();
       return;
     }
+    if (isSessionAuthError(res)) {
+      expireSession();
+      return;
+    }
     if (!res.ok) throw new Error(res.error || "unknown error");
     updateShareBanner(res);
     ruleListEl.innerHTML = "";
@@ -394,6 +431,10 @@ async function loadRules() {
           const r = await api({ action: "delete_rule", id: rule.id });
           if (isShareAuthError(r)) {
             showShareExpired();
+            return;
+          }
+          if (isSessionAuthError(r)) {
+            expireSession();
             return;
           }
           if (!r.ok) throw new Error(r.error || "unknown error");
@@ -501,6 +542,10 @@ async function loadList() {
     const res = await api({ action: "list" });
     if (isShareAuthError(res)) {
       showShareExpired();
+      return;
+    }
+    if (isSessionAuthError(res)) {
+      expireSession();
       return;
     }
     if (!res.ok) throw new Error(res.error || "unknown error");
@@ -682,7 +727,7 @@ async function issueShare() {
   setShareButtonsDisabled(true);
   shareCardErrorEl.textContent = "";
   try {
-    const res = await callApi(CONFIG.GAS_ENDPOINT, idToken, { action: "issue_share" });
+    const res = await api({ action: "issue_share" });
     if (!res.ok) throw new Error(res.error || "unknown error");
     issuedShare = { token: res.share_token, expiresAt: res.expires_at };
     renderIssuedShare();
@@ -697,7 +742,7 @@ async function revokeShare() {
   setShareButtonsDisabled(true);
   shareCardErrorEl.textContent = "";
   try {
-    const res = await callApi(CONFIG.GAS_ENDPOINT, idToken, { action: "revoke_share" });
+    const res = await api({ action: "revoke_share" });
     if (!res.ok) throw new Error(res.error || "unknown error");
     issuedShare = null;
     renderIssuedShare();
@@ -731,7 +776,7 @@ function showMain(email) {
   mainTabsEl.hidden = false;
   applyMainTab();
   logoutBtn.hidden = false;
-  accountEl.textContent = "ログイン中：" + email;
+  accountEl.textContent = email ? "ログイン中：" + email : "ログイン中";
   renderIssuedShare();
   initForm();
   loadList();
@@ -765,16 +810,43 @@ function showGate() {
   logoutBtn.hidden = true;
 }
 
-function onCredential(response) {
+async function onCredential(response) {
   // No client-side authorization gate: alarm-gas verifies the token
   // and the account, and rejects unauthorized calls server-side.
   const payload = decodeJwtPayload(response.credential);
-  idToken = response.credential;
+  // Exchange the (1-hour) ID token for a 30-day owner session and
+  // save that, so the next visit restores the session instead of
+  // starting at the gate.
+  let res = null;
+  try {
+    res = await callApi(CONFIG.GAS_ENDPOINT, response.credential, {
+      action: "exchange_session",
+    });
+  } catch {
+    res = null;
+  }
+  if (!res || !res.ok || !res.session_token) {
+    gateErrorEl.textContent = "ログインに失敗しました。もう一度お試しください。";
+    return;
+  }
+  sessionToken = res.session_token;
+  saveSessionToken(sessionToken);
+  saveSessionEmail(payload.email || "");
   showMain(payload.email);
 }
 
 logoutBtn.addEventListener("click", () => {
-  idToken = null;
+  const endingSession = sessionToken;
+  sessionToken = null;
+  clearSavedSession();
+  if (endingSession) {
+    // Revoke the owner session server-side; local logout proceeds
+    // regardless of the outcome.
+    callApi(CONFIG.GAS_ENDPOINT, null, {
+      action: "revoke_session",
+      session_token: endingSession,
+    }).catch(() => {});
+  }
   issuedShare = null;
   renderIssuedShare();
   if (window.google) {
@@ -785,20 +857,18 @@ logoutBtn.addEventListener("click", () => {
 
 window.addEventListener("load", () => {
   // A #share= link skips the sign-in gate entirely: the share token
-  // authenticates the API calls instead of a Google ID token.
+  // authenticates the API calls instead of an owner session.
   const token = parseShareToken(window.location.hash);
   if (token) {
     shareToken = token;
     showShareMain();
     return;
   }
-  google.accounts.id.initialize({
-    client_id: CONFIG.GOOGLE_CLIENT_ID,
-    callback: onCredential,
-  });
-  google.accounts.id.renderButton(document.getElementById("signin"), {
-    theme: "outline",
-    size: "large",
-    text: "signin_with",
-  });
+  const savedSession = loadSavedSessionToken();
+  if (savedSession) {
+    sessionToken = savedSession;
+    showMain(loadSavedSessionEmail());
+    return;
+  }
+  initGoogleSignIn();
 });
