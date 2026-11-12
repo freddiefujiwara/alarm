@@ -10,8 +10,7 @@
     "preview": "vite preview",
     "test": "vitest run",
     "test:watch": "vitest",
-    "test:staging": "playwright test e2e/staging.check.js",
-    "test:smoke": "playwright test e2e/smoke.check.js"
+    "test:staging": "playwright test e2e/staging.check.js"
   },
   "devDependencies": {
     "@playwright/test": "^1.64.1",
