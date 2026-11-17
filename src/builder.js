@@ -12,7 +12,7 @@ const YOUTUBE_HOSTS = new Set([
 ]);
 
 // Extract a video ID from a YouTube URL (watch, youtu.be, shorts,
-// live), following the same rules as the ha.ze.gs page. Returns null
+// live), following the same rules as the home-control page. Returns null
 // when the URL does not carry one.
 export function parseYouTubeId(youtubeUrl) {
   if (!youtubeUrl) return null;
@@ -36,7 +36,7 @@ export function parseYouTubeId(youtubeUrl) {
 }
 
 // Speech text is sent to the speaker wrapper URL-encoded, with runs of
-// whitespace folded into a full-width space (the ha.ze.gs convention).
+// whitespace folded into a full-width space (the home-control convention).
 export function buildSpeechCommand(prefix, text) {
   const normalized = String(text ?? "").replace(/\s+/g, "　").trim();
   return prefix + encodeURIComponent(normalized);

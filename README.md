@@ -12,7 +12,7 @@ Published at https://freddiefujiwara.com/alarm/ from GitHub Pages.
   - Speech: an optional text. alarm-gas announces the time, followed
     by the text (an empty text announces the time only).
   - Commands: up to 10 home commands, assembled with builders that
-    follow the ha.ze.gs page — speech (speaker + text), YouTube
+    follow the home-control page — speech (speaker + text), YouTube
     (device + URL), device preset buttons (including composite ones
     such as the fan's S/M/L), grouped presets, and raw command paths.
 
