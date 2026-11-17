@@ -39,7 +39,12 @@
         </nav>
         <div id="status"></div>
 
-        <section id="gate" class="table-wrap auth-gate">
+        <section id="boot-loading" class="table-wrap auth-gate" aria-busy="true">
+          <div class="spinner" aria-hidden="true"></div>
+          <p class="meta">読み込んでいます…</p>
+        </section>
+
+        <section id="gate" class="table-wrap auth-gate" hidden>
           <h2 class="section-title">Googleログインが必要です</h2>
           <p class="meta">許可されたアカウントでサインインしてください。</p>
           <div id="signin" class="google-login-button"></div>
@@ -148,7 +153,7 @@
 
         <section id="share-expired" class="table-wrap" hidden>
           <h2 class="section-title">リンクの有効期限が切れています</h2>
-          <p class="meta">この一時アクセスリンクは失効しています。発行者に新しいリンクを依頼してください。</p>
+          <p class="meta">この一時アクセスリンクは無効か、期限切れです。発行者に新しいリンクを依頼してください。</p>
         </section>
 
         <section id="share-section" class="table-wrap" hidden>
