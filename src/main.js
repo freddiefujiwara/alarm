@@ -67,6 +67,7 @@ const speechTextEl = $("speech-text");
 const speechPanelEl = $("speech-panel");
 const commandsPanelEl = $("commands-panel");
 const speechDevicesEl = $("speech-devices");
+const speechModeDevicesEl = $("speech-mode-devices");
 const speechVolumeEl = $("speech-volume");
 const speechCmdTextEl = $("speech-cmd-text");
 const youtubeDeviceEl = $("youtube-device");
@@ -527,47 +528,63 @@ youtubeDeviceEl.addEventListener("change", () =>
 );
 
 // Speech speakers are toggle chips (the same pattern as the weekday
-// chips): one speech command is added per selected speaker, so the
-// same text can go to Tatami and Nest together. At least one speaker
-// stays selected. Selecting a speaker also adopts the volume embedded
-// in its catalog prefix, like the old dropdown did.
-let activeSpeakers = new Set();
-
-function renderSpeechSpeakers() {
-  speechDevicesEl.innerHTML = "";
+// chips), shared by the simple speech panel and the builder's speech
+// tab: one speech command is built per selected speaker, so the same
+// text can go to Tatami and Nest together. At least one speaker stays
+// selected. onSelect fires when a speaker is added (the builder uses
+// it to adopt that speaker's default volume).
+function renderSpeakerChips(container, active, onSelect) {
+  container.innerHTML = "";
   catalog.speech.forEach((speaker, i) => {
     const chip = document.createElement("button");
     chip.type = "button";
-    chip.className = "builder-tab" + (activeSpeakers.has(i) ? " active" : "");
+    chip.className = "builder-tab" + (active.has(i) ? " active" : "");
     chip.textContent = speaker.label;
-    chip.setAttribute("aria-pressed", String(activeSpeakers.has(i)));
+    chip.setAttribute("aria-pressed", String(active.has(i)));
     chip.addEventListener("click", () => {
-      if (activeSpeakers.has(i)) {
-        if (activeSpeakers.size === 1) {
+      if (active.has(i)) {
+        if (active.size === 1) {
           formStatusEl.textContent = "スピーカーは最低1つ必要です。";
           return;
         }
-        activeSpeakers.delete(i);
+        active.delete(i);
       } else {
-        activeSpeakers.add(i);
-        const v = prefixVolume(speaker.prefix);
-        if (v !== null) speechVolumeEl.value = String(v);
+        active.add(i);
+        if (onSelect) onSelect(speaker);
       }
       formStatusEl.textContent = "";
-      renderSpeechSpeakers();
+      renderSpeakerChips(container, active, onSelect);
     });
-    speechDevicesEl.appendChild(chip);
+    container.appendChild(chip);
+  });
+}
+
+// One speech command per selected speaker, in catalog order. With a
+// volume the catalog prefix's volume is overridden; without one each
+// speaker keeps its catalog default.
+function speakerCommands(active, spoken, volume) {
+  return [...active]
+    .sort((a, b) => a - b)
+    .filter((i) => catalog.speech[i])
+    .map((i) => {
+      const prefix = catalog.speech[i].prefix;
+      return buildSpeechCommand(volume === null ? prefix : withVolume(prefix, volume), spoken);
+    });
+}
+
+let activeSpeakers = new Set();
+let simpleSpeakers = new Set();
+
+function renderSpeechSpeakers() {
+  renderSpeakerChips(speechDevicesEl, activeSpeakers, (speaker) => {
+    const v = prefixVolume(speaker.prefix);
+    if (v !== null) speechVolumeEl.value = String(v);
   });
 }
 
 $("add-speech").addEventListener("click", () => {
   const spoken = speechTextWithTime(timeEl.value, speechCmdTextEl.value.trim());
-  const cmds = [...activeSpeakers]
-    .sort((a, b) => a - b)
-    .filter((i) => catalog.speech[i])
-    .map((i) =>
-      buildSpeechCommand(withVolume(catalog.speech[i].prefix, speechVolumeEl.value), spoken),
-    );
+  const cmds = speakerCommands(activeSpeakers, spoken, speechVolumeEl.value);
   if (!cmds.length) return;
   addCommands(cmds);
   speechCmdTextEl.value = "";
@@ -693,7 +710,16 @@ registerBtn.addEventListener("click", async () => {
     body.until = until;
   }
   if (mode === "speech") {
-    body.text = speechTextEl.value.trim();
+    const cmds = speakerCommands(
+      simpleSpeakers,
+      speechTextWithTime(timeEl.value, speechTextEl.value.trim()),
+      null,
+    );
+    if (!cmds.length) {
+      setStatus("スピーカーを選んでください。", true);
+      return;
+    }
+    body.commands = cmds.map(toWireCommand);
   } else {
     if (!commands.length) {
       setStatus("コマンドを1つ以上追加してください。", true);
@@ -739,7 +765,11 @@ function initForm() {
   activeSpeakers = catalog.speech.length
     ? new Set([defaultSelectIndex(catalog.speech, "tatami")])
     : new Set();
+  simpleSpeakers = catalog.speech.length
+    ? new Set([defaultSelectIndex(catalog.speech, "tatami")])
+    : new Set();
   renderSpeechSpeakers();
+  renderSpeakerChips(speechModeDevicesEl, simpleSpeakers, null);
   fillSelect(youtubeDeviceEl, catalog.youtube, "tatami");
   fillVolumeSelect(speechVolumeEl);
   fillVolumeSelect(youtubeVolumeEl);
