@@ -66,7 +66,7 @@ const ruleStatusEl = $("rule-status");
 const speechTextEl = $("speech-text");
 const speechPanelEl = $("speech-panel");
 const commandsPanelEl = $("commands-panel");
-const speechDeviceEl = $("speech-device");
+const speechDevicesEl = $("speech-devices");
 const speechVolumeEl = $("speech-volume");
 const speechCmdTextEl = $("speech-cmd-text");
 const youtubeDeviceEl = $("youtube-device");
@@ -522,23 +522,54 @@ function syncVolume(deviceEl, volumeEl, items) {
   if (v !== null) volumeEl.value = String(v);
 }
 
-speechDeviceEl.addEventListener("change", () =>
-  syncVolume(speechDeviceEl, speechVolumeEl, catalog.speech),
-);
 youtubeDeviceEl.addEventListener("change", () =>
   syncVolume(youtubeDeviceEl, youtubeVolumeEl, catalog.youtube),
 );
 
+// Speech speakers are toggle chips (the same pattern as the weekday
+// chips): one speech command is added per selected speaker, so the
+// same text can go to Tatami and Nest together. At least one speaker
+// stays selected. Selecting a speaker also adopts the volume embedded
+// in its catalog prefix, like the old dropdown did.
+let activeSpeakers = new Set();
+
+function renderSpeechSpeakers() {
+  speechDevicesEl.innerHTML = "";
+  catalog.speech.forEach((speaker, i) => {
+    const chip = document.createElement("button");
+    chip.type = "button";
+    chip.className = "builder-tab" + (activeSpeakers.has(i) ? " active" : "");
+    chip.textContent = speaker.label;
+    chip.setAttribute("aria-pressed", String(activeSpeakers.has(i)));
+    chip.addEventListener("click", () => {
+      if (activeSpeakers.has(i)) {
+        if (activeSpeakers.size === 1) {
+          formStatusEl.textContent = "スピーカーは最低1つ必要です。";
+          return;
+        }
+        activeSpeakers.delete(i);
+      } else {
+        activeSpeakers.add(i);
+        const v = prefixVolume(speaker.prefix);
+        if (v !== null) speechVolumeEl.value = String(v);
+      }
+      formStatusEl.textContent = "";
+      renderSpeechSpeakers();
+    });
+    speechDevicesEl.appendChild(chip);
+  });
+}
+
 $("add-speech").addEventListener("click", () => {
-  const speaker = catalog.speech[Number(speechDeviceEl.value || 0)];
-  const text = speechCmdTextEl.value.trim();
-  if (!speaker) return;
-  addCommands([
-    buildSpeechCommand(
-      withVolume(speaker.prefix, speechVolumeEl.value),
-      speechTextWithTime(timeEl.value, text),
-    ),
-  ]);
+  const spoken = speechTextWithTime(timeEl.value, speechCmdTextEl.value.trim());
+  const cmds = [...activeSpeakers]
+    .sort((a, b) => a - b)
+    .filter((i) => catalog.speech[i])
+    .map((i) =>
+      buildSpeechCommand(withVolume(catalog.speech[i].prefix, speechVolumeEl.value), spoken),
+    );
+  if (!cmds.length) return;
+  addCommands(cmds);
   speechCmdTextEl.value = "";
 });
 
@@ -705,11 +736,16 @@ function initForm() {
   const pad = (n) => String(n).padStart(2, "0");
   dateEl.value = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`;
   timeEl.value = `${pad(now.getHours())}:${pad(now.getMinutes())}`;
-  fillSelect(speechDeviceEl, catalog.speech, "tatami");
+  activeSpeakers = catalog.speech.length
+    ? new Set([defaultSelectIndex(catalog.speech, "tatami")])
+    : new Set();
+  renderSpeechSpeakers();
   fillSelect(youtubeDeviceEl, catalog.youtube, "tatami");
   fillVolumeSelect(speechVolumeEl);
   fillVolumeSelect(youtubeVolumeEl);
-  syncVolume(speechDeviceEl, speechVolumeEl, catalog.speech);
+  const defaultSpeaker = catalog.speech[defaultSelectIndex(catalog.speech, "tatami")];
+  const defaultVolume = defaultSpeaker ? prefixVolume(defaultSpeaker.prefix) : null;
+  if (defaultVolume !== null) speechVolumeEl.value = String(defaultVolume);
   syncVolume(youtubeDeviceEl, youtubeVolumeEl, catalog.youtube);
   fillSelect(deviceSelectEl, [...catalog.devices, ...catalog.groups]);
   renderDeviceActions();
