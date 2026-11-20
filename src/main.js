@@ -430,12 +430,18 @@ async function loadRules() {
     if (!res.ok) throw new Error(res.error || "unknown error");
     updateShareBanner(res);
     ruleListEl.innerHTML = "";
-    if (!res.rules.length) {
+    // A deformed payload degrades entry by entry instead of
+    // failing the whole list: non-array lists read as empty,
+    // non-object entries are skipped, non-array commands as none.
+    const rules = Array.isArray(res.rules) ? res.rules : [];
+    if (!rules.length) {
       ruleStatusEl.textContent = "設定中の繰り返しはありません。";
       return;
     }
     ruleStatusEl.textContent = "";
-    res.rules.forEach((rule) => {
+    rules.forEach((rule) => {
+      if (!rule || typeof rule !== "object") return;
+      const commands = Array.isArray(rule.commands) ? rule.commands : [];
       const row = document.createElement("div");
       row.className = "alarm-row";
       const left = document.createElement("div");
@@ -444,14 +450,14 @@ async function loadRules() {
       time.textContent = `${describeWeekdays(rule.weekdays)} ${rule.time}`;
       const cmds = document.createElement("div");
       cmds.className = "alarm-commands";
-      const parts = rule.commands
+      const parts = commands
         .map((c) => describeCommand(fromWireCommand(c), catalog))
         .join(" / ");
       cmds.textContent = rule.until ? `${parts}（${formatUntilDate(rule.until)}まで）` : parts;
       left.append(time, cmds);
       const actions = document.createElement("div");
       actions.className = "row-actions";
-      appendExecCurl(left, actions, rule.commands);
+      appendExecCurl(left, actions, commands);
       const del = document.createElement("button");
       del.type = "button";
       del.className = "theme-toggle";
@@ -629,12 +635,16 @@ async function loadList() {
     if (!res.ok) throw new Error(res.error || "unknown error");
     updateShareBanner(res);
     listEl.innerHTML = "";
-    if (!res.alarms.length) {
+    // Same degradation contract as loadRules.
+    const alarms = Array.isArray(res.alarms) ? res.alarms : [];
+    if (!alarms.length) {
       listStatusEl.textContent = "設定中のアラームはありません。";
       return;
     }
     listStatusEl.textContent = "";
-    res.alarms.forEach((alarm) => {
+    alarms.forEach((alarm) => {
+      if (!alarm || typeof alarm !== "object") return;
+      const commands = Array.isArray(alarm.commands) ? alarm.commands : [];
       const row = document.createElement("div");
       row.className = "alarm-row";
       const left = document.createElement("div");
@@ -643,13 +653,13 @@ async function loadList() {
       time.textContent = formatApiTime(alarm.time);
       const cmds = document.createElement("div");
       cmds.className = "alarm-commands";
-      cmds.textContent = alarm.commands
+      cmds.textContent = commands
         .map((c) => describeCommand(fromWireCommand(c), catalog))
         .join(" / ");
       left.append(time, cmds);
       const actions = document.createElement("div");
       actions.className = "row-actions";
-      appendExecCurl(left, actions, alarm.commands);
+      appendExecCurl(left, actions, commands);
       const del = document.createElement("button");
       del.type = "button";
       del.className = "theme-toggle";
