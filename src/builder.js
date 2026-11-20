@@ -4,6 +4,18 @@
 
 export const MAX_COMMANDS = 10;
 
+// Display-text coercion for values that arrive from the backend:
+// strings pass through, numbers are stringified, and anything else
+// (null, arrays, objects) reads as blank instead of throwing or
+// leaking a non-string into a label. Values whose toString is not
+// a function — producible via JSON — make the usual coercions
+// (String(), RegExp exec, Date) throw, so they land here too.
+function asText(value) {
+  if (typeof value === "string") return value;
+  if (typeof value === "number") return String(value);
+  return "";
+}
+
 const YOUTUBE_HOSTS = new Set([
   "youtube.com",
   "www.youtube.com",
@@ -79,8 +91,9 @@ export function toApiTime(dateValue, timeValue) {
 
 // "20261102-06:52" -> "11/2 06:52" for display.
 export function formatApiTime(apiTime) {
-  const m = /^(\d{4})(\d{2})(\d{2})-(\d{2}):(\d{2})$/.exec(apiTime || "");
-  if (!m) return apiTime || "";
+  const text = asText(apiTime);
+  const m = /^(\d{4})(\d{2})(\d{2})-(\d{2}):(\d{2})$/.exec(text);
+  if (!m) return text;
   return `${Number(m[2])}/${Number(m[3])} ${m[4]}:${m[5]}`;
 }
 
@@ -99,13 +112,14 @@ function safeDecode(value) {
 // two. Speech text is URL-encoded inside the command, so it never
 // contains a literal "/" or " " and the mapping is exact.
 export function toWireCommand(command) {
-  return command.replace(/^\//, "").split("/").join(" ");
+  return asText(command).replace(/^\//, "").split("/").join(" ");
 }
 
 // The reverse of toWireCommand. Path-form and full-URL inputs pass
 // through unchanged, and anything whose first token is not an ASCII
 // command name (for example Japanese speech text) is left as is.
 export function fromWireCommand(command) {
+  command = asText(command);
   if (command.startsWith("/") || command.includes("://")) return command;
   const tokens = command.split(/ +/).filter((t) => t.length > 0);
   if (tokens.length >= 2 && /^[A-Za-z0-9][A-Za-z0-9-]*$/.test(tokens[0])) {
@@ -138,7 +152,7 @@ export function toExecCurl(wire, base) {
 // multi-command alarm can be pasted and run in order. Commands that do
 // not convert are skipped; the result is "" when nothing converts.
 export function toExecCurlBlock(wires, base) {
-  return (wires || [])
+  return (Array.isArray(wires) ? wires : [])
     .map((wire) => toExecCurl(wire, base))
     .filter((line) => line !== null)
     .join("\n");
@@ -200,6 +214,7 @@ function matchPrefix(command, prefix) {
 // - a command that appears in exactly one catalog action -> its label
 // - anything else    -> the raw path
 export function describeCommand(command, catalog) {
+  command = asText(command);
   const cat = catalog || {};
   for (const speaker of cat.speech || []) {
     const m = matchPrefix(command, speaker.prefix);
@@ -230,9 +245,18 @@ export function describeCommand(command, catalog) {
 export const WEEKDAY_LABELS = ["日", "月", "火", "水", "木", "金", "土"];
 
 // Active weekdays -> a short Japanese description: every day, the
-// weekday set, the weekend set, or the joined day labels.
+// weekday set, the weekend set, or the joined day labels. A missing
+// or non-array value reads as no description, and entries that are
+// not day numbers (0-6) are ignored rather than leaking blank
+// segments into the label; duplicates describe the day once.
 export function describeWeekdays(weekdays) {
-  const days = [...weekdays].sort((a, b) => a - b);
+  const days = [
+    ...new Set(
+      (Array.isArray(weekdays) ? weekdays : []).filter(
+        (d) => Number.isInteger(d) && d >= 0 && d <= 6,
+      ),
+    ),
+  ].sort((a, b) => a - b);
   if (days.length === 7) return "毎日";
   if (days.join(",") === "1,2,3,4,5") return "平日のみ";
   if (days.join(",") === "0,6") return "土日のみ";
@@ -241,8 +265,9 @@ export function describeWeekdays(weekdays) {
 
 // "20261231" -> "2026/12/31". Anything else is returned unchanged.
 export function formatUntilDate(value) {
-  const m = /^(\d{4})(\d{2})(\d{2})$/.exec(value || "");
-  return m ? `${m[1]}/${m[2]}/${m[3]}` : value;
+  const text = asText(value);
+  const m = /^(\d{4})(\d{2})(\d{2})$/.exec(text);
+  return m ? `${m[1]}/${m[2]}/${m[3]}` : text;
 }
 
 // "2026-12-31" (a date input value) -> "20261231" (the alarm-gas
