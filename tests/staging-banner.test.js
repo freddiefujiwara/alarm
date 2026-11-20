@@ -30,7 +30,7 @@ describe("showStagingBanner", () => {
     expect(hrefs.slice(0, 8)).toEqual([
       "/staging/",
       "/blog/staging/",
-      "/list-of-stuff-admin/staging/",
+      "/everything-i-own-admin/staging/",
       "/tweet/staging/",
       "/alarm/staging/",
       "/health/staging/",
