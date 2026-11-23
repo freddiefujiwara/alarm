@@ -86,6 +86,13 @@
             <div class="field-row">
               <label>終了日（任意） <input id="until" type="date" /></label>
             </div>
+            <div class="field-row">
+              <span>除外日（任意）</span>
+              <input id="exception-date" type="date" />
+              <button id="exception-add" class="theme-toggle" type="button">追加</button>
+              <span id="exception-chips"></span>
+            </div>
+            <p class="meta">除外日は、曜日条件を満たしても鳴らさない日です。</p>
           </div>
 
           <div class="field-row" role="radiogroup" aria-label="種類">
