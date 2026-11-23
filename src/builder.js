@@ -276,3 +276,20 @@ export function toApiDate(dateValue) {
   const d = /^(\d{4})-(\d{2})-(\d{2})$/.exec(dateValue || "");
   return d ? `${d[1]}${d[2]}${d[3]}` : null;
 }
+
+// Exception dates (a list of "YYYYMMDD" keys) -> a short Japanese
+// description like "2026/12/25・2027/01/01を除く". Entries that are
+// not date keys are ignored rather than leaking blank segments into
+// the label, duplicates describe once, and an empty or missing list
+// describes as nothing.
+export function describeExceptions(exceptions) {
+  const dates = [
+    ...new Set(
+      (Array.isArray(exceptions) ? exceptions : []).filter(
+        (d) => typeof d === "string" && /^\d{8}$/.test(d),
+      ),
+    ),
+  ].sort();
+  if (!dates.length) return "";
+  return `${dates.map((d) => formatUntilDate(d)).join("・")}を除く`;
+}

@@ -10,6 +10,7 @@ import {
   parseYouTubeId,
   prefixVolume,
   speechTextWithTime,
+  describeExceptions,
   describeWeekdays,
   formatUntilDate,
   toApiDate,
@@ -232,5 +233,13 @@ describe("recurrence helpers", () => {
     expect(toApiDate("2026-12-31")).toBe("20261231");
     expect(toApiDate("")).toBeNull();
     expect(toApiDate("2026/12/31")).toBeNull();
+  });
+
+  it("describes exception dates sorted, once each", () => {
+    expect(describeExceptions(["20261225"])).toBe("2026/12/25を除く");
+    expect(describeExceptions(["20270101", "20261225", "20261225"])).toBe(
+      "2026/12/25・2027/01/01を除く",
+    );
+    expect(describeExceptions([])).toBe("");
   });
 });

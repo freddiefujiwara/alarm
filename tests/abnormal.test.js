@@ -8,6 +8,7 @@ import {
 } from "../src/share.js";
 import {
   describeCommand,
+  describeExceptions,
   describeWeekdays,
   formatApiTime,
   formatUntilDate,
@@ -131,6 +132,19 @@ describe("describeWeekdays with deformed weekday lists", () => {
   it("describes a set with duplicates once", () => {
     expect(describeWeekdays([1, 1, 2, 3, 4, 5])).toBe("平日のみ");
     expect(describeWeekdays([0, 6, 6, 0])).toBe("土日のみ");
+  });
+});
+
+describe("describeExceptions with deformed date lists", () => {
+  it("reads a missing or non-array list as no description", () => {
+    expect(describeExceptions(null)).toBe("");
+    expect(describeExceptions(undefined)).toBe("");
+    expect(describeExceptions("20261225")).toBe("");
+  });
+
+  it("ignores entries that are not date keys", () => {
+    expect(describeExceptions(["20261225", "junk", 20270101, null])).toBe("2026/12/25を除く");
+    expect(describeExceptions([unstringifiable])).toBe("");
   });
 });
 

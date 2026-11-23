@@ -18,6 +18,7 @@ import {
   buildYouTubeCommand,
   defaultSelectIndex,
   describeCommand,
+  describeExceptions,
   describeWeekdays,
   formatApiTime,
   formatUntilDate,
@@ -61,6 +62,9 @@ const timeEl = $("time");
 const repeatPanelEl = $("repeat-panel");
 const weekdayChipsEl = $("weekday-chips");
 const untilEl = $("until");
+const exceptionDateEl = $("exception-date");
+const exceptionAddEl = $("exception-add");
+const exceptionChipsEl = $("exception-chips");
 const ruleListEl = $("rule-list");
 const ruleStatusEl = $("rule-status");
 const speechTextEl = $("speech-text");
@@ -342,6 +346,40 @@ function renderKind() {
   repeatPanelEl.hidden = !repeat;
   dateLabelEl.hidden = repeat;
 }
+
+// Exception dates for the rule being composed ("YYYYMMDD" keys).
+// The rule does not fire on these dates even when the weekday
+// matches. Chips show the dates; tapping one removes it.
+let formExceptions = [];
+
+function renderFormExceptions() {
+  exceptionChipsEl.innerHTML = "";
+  [...formExceptions].sort().forEach((key) => {
+    const chip = document.createElement("button");
+    chip.type = "button";
+    chip.className = "builder-tab active";
+    chip.textContent = `${formatUntilDate(key)} ×`;
+    chip.addEventListener("click", () => {
+      formExceptions = formExceptions.filter((d) => d !== key);
+      renderFormExceptions();
+    });
+    exceptionChipsEl.appendChild(chip);
+  });
+}
+
+exceptionAddEl.addEventListener("click", () => {
+  const key = toApiDate(exceptionDateEl.value);
+  if (!key) {
+    formStatusEl.textContent = "除外日の形式が不正です。";
+    return;
+  }
+  if (!formExceptions.includes(key)) {
+    formExceptions.push(key);
+  }
+  formStatusEl.textContent = "";
+  exceptionDateEl.value = "";
+  renderFormExceptions();
+});
 document.querySelectorAll('input[name="kind"]').forEach((radio) => {
   radio.addEventListener("change", renderKind);
 });
@@ -415,6 +453,91 @@ function appendExecCurl(container, actions, wires) {
   actions.append(toggle, copy);
 }
 
+// The per-rule exception-date editor shown under a rule row: the
+// current dates as removable chips, a date input to add more, and a
+// save button that replaces the rule's dates in place
+// (set_rule_exceptions) so the rule itself is not recreated.
+function buildExceptionEditor(rule) {
+  const editor = document.createElement("div");
+  editor.className = "exception-editor";
+  editor.hidden = true;
+  let editing = (Array.isArray(rule.exceptions) ? rule.exceptions : []).filter(
+    (d) => typeof d === "string" && /^\d{8}$/.test(d),
+  );
+  const chips = document.createElement("span");
+  const dateInput = document.createElement("input");
+  dateInput.type = "date";
+  const addBtn = document.createElement("button");
+  addBtn.type = "button";
+  addBtn.className = "theme-toggle";
+  addBtn.textContent = "追加";
+  const saveBtn = document.createElement("button");
+  saveBtn.type = "button";
+  saveBtn.className = "theme-toggle";
+  saveBtn.textContent = "保存";
+  const status = document.createElement("p");
+  status.className = "meta";
+  const renderChips = () => {
+    chips.innerHTML = "";
+    [...editing].sort().forEach((key) => {
+      const chip = document.createElement("button");
+      chip.type = "button";
+      chip.className = "builder-tab active";
+      chip.textContent = `${formatUntilDate(key)} ×`;
+      chip.addEventListener("click", () => {
+        editing = editing.filter((d) => d !== key);
+        renderChips();
+      });
+      chips.appendChild(chip);
+    });
+  };
+  addBtn.addEventListener("click", () => {
+    const key = toApiDate(dateInput.value);
+    if (!key) {
+      status.textContent = "除外日の形式が不正です。";
+      return;
+    }
+    if (!editing.includes(key)) editing.push(key);
+    status.textContent = "";
+    dateInput.value = "";
+    renderChips();
+  });
+  saveBtn.addEventListener("click", async () => {
+    saveBtn.disabled = true;
+    try {
+      const r = await api({
+        action: "set_rule_exceptions",
+        id: rule.id,
+        exceptions: [...editing].sort(),
+      });
+      if (isShareAuthError(r)) {
+        showShareExpired();
+        return;
+      }
+      if (isSessionAuthError(r)) {
+        expireSession();
+        return;
+      }
+      if (!r.ok) throw new Error(r.error || "unknown error");
+      await loadRules();
+    } catch (err) {
+      status.textContent = `保存に失敗しました: ${err.message}`;
+      saveBtn.disabled = false;
+    }
+  });
+  const editRow = document.createElement("div");
+  editRow.className = "field-row";
+  const label = document.createElement("span");
+  label.textContent = "除外日";
+  editRow.append(label, dateInput, addBtn, chips);
+  const saveRow = document.createElement("div");
+  saveRow.className = "field-row";
+  saveRow.append(saveBtn);
+  editor.append(editRow, saveRow, status);
+  renderChips();
+  return editor;
+}
+
 async function loadRules() {
   ruleStatusEl.textContent = "読み込み中…";
   try {
@@ -453,7 +576,11 @@ async function loadRules() {
       const parts = commands
         .map((c) => describeCommand(fromWireCommand(c), catalog))
         .join(" / ");
-      cmds.textContent = rule.until ? `${parts}（${formatUntilDate(rule.until)}まで）` : parts;
+      const suffixes = [];
+      if (rule.until) suffixes.push(`${formatUntilDate(rule.until)}まで`);
+      const exceptionsText = describeExceptions(rule.exceptions);
+      if (exceptionsText) suffixes.push(exceptionsText);
+      cmds.textContent = suffixes.length ? `${parts}（${suffixes.join("、")}）` : parts;
       left.append(time, cmds);
       const actions = document.createElement("div");
       actions.className = "row-actions";
@@ -482,6 +609,16 @@ async function loadRules() {
         }
       });
       actions.appendChild(del);
+      const editor = buildExceptionEditor(rule);
+      const excBtn = document.createElement("button");
+      excBtn.type = "button";
+      excBtn.className = "theme-toggle";
+      excBtn.textContent = "除外日";
+      excBtn.addEventListener("click", () => {
+        editor.hidden = !editor.hidden;
+      });
+      actions.appendChild(excBtn);
+      left.appendChild(editor);
       row.append(left, actions);
       ruleListEl.appendChild(row);
     });
@@ -719,6 +856,9 @@ registerBtn.addEventListener("click", async () => {
     }
     body.until = until;
   }
+  if (repeat && formExceptions.length) {
+    body.exceptions = [...formExceptions].sort();
+  }
   if (mode === "speech") {
     const cmds = speakerCommands(
       simpleSpeakers,
@@ -750,7 +890,8 @@ registerBtn.addEventListener("click", async () => {
     if (repeat) {
       setStatus(
         `繰り返しを登録しました（${describeWeekdays(res.rule.weekdays)} ${res.rule.time}` +
-          `${res.rule.until ? `、${formatUntilDate(res.rule.until)}まで` : ""}）。`,
+          `${res.rule.until ? `、${formatUntilDate(res.rule.until)}まで` : ""}` +
+          `${describeExceptions(res.rule.exceptions) ? `、${describeExceptions(res.rule.exceptions)}` : ""}）。`,
       );
       await loadRules();
     } else {
@@ -759,6 +900,8 @@ registerBtn.addEventListener("click", async () => {
     }
     commands = [];
     renderCommands();
+    formExceptions = [];
+    renderFormExceptions();
     selectMainTab("list");
   } catch (err) {
     setStatus(`登録に失敗しました: ${err.message}`, true);
@@ -793,6 +936,7 @@ function initForm() {
   renderMode();
   renderKind();
   renderWeekdayChips();
+  renderFormExceptions();
 }
 
 // --- Owner-side temporary access link card ---
