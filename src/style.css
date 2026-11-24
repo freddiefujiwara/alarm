@@ -31,6 +31,13 @@
   box-sizing: border-box;
 }
 
+/* The hidden attribute must win over class display rules (such as
+   .theme-toggle's inline-flex); without this, elements marked
+   hidden stay visible. */
+[hidden] {
+  display: none !important;
+}
+
 html,
 body {
   min-height: 100%;
