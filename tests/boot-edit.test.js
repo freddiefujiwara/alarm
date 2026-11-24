@@ -107,6 +107,8 @@ describe("boot rule editing (runtime)", () => {
 
     await until(() => document.getElementById("register").textContent === "登録する");
     expect(document.getElementById("cancel-edit").hidden).toBe(true);
+    expect(document.getElementById("time").value).toBe("");
+    expect(document.getElementById("until").value).toBe("");
   });
 
   it("cancelling an edit returns the form to create mode", async () => {
@@ -122,10 +124,23 @@ describe("boot rule editing (runtime)", () => {
     clickButton(document.getElementById("rule-list"), "編集");
     await until(() => document.getElementById("register").textContent === "更新する");
 
+    const activeChips = () =>
+      [...document.getElementById("weekday-chips").children].filter((c) =>
+        c.classList.contains("active"),
+      ).length;
+    expect(activeChips()).toBe(5);
+    expect(document.getElementById("time").value).toBe("07:30");
+    expect(document.getElementById("until").value).toBe("2026-12-31");
+
     document.getElementById("cancel-edit").click();
 
     await until(() => document.getElementById("register").textContent === "登録する");
     expect(document.getElementById("cancel-edit").hidden).toBe(true);
     expect(document.getElementById("status").textContent).toBe("編集をやめました。");
+    expect(document.getElementById("time").value).toBe("");
+    expect(document.getElementById("until").value).toBe("");
+    expect(activeChips()).toBe(7);
+    expect(document.getElementById("form-section").hidden).toBe(true);
+    expect(document.getElementById("list-section").hidden).toBe(false);
   });
 });

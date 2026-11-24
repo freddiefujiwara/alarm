@@ -884,12 +884,23 @@ function endEdit() {
   cancelEditBtn.hidden = true;
 }
 
-cancelEditBtn.addEventListener("click", () => {
-  endEdit();
+// Return the rule fields of the form to their initial state: no
+// time, every weekday on, no until, no exceptions, no commands.
+function clearComposedRule() {
+  timeEl.value = "";
+  activeWeekdays = new Set([0, 1, 2, 3, 4, 5, 6]);
+  renderWeekdayChips();
+  untilEl.value = "";
   commands = [];
   renderCommands();
   formExceptions = [];
   renderFormExceptions();
+}
+
+cancelEditBtn.addEventListener("click", () => {
+  endEdit();
+  clearComposedRule();
+  selectMainTab("list");
   setStatus("編集をやめました。");
 });
 
@@ -963,7 +974,10 @@ registerBtn.addEventListener("click", async () => {
           `${res.rule.until ? `、${formatUntilDate(res.rule.until)}まで` : ""}` +
           `${describeExceptions(res.rule.exceptions) ? `、${describeExceptions(res.rule.exceptions)}` : ""}）。`,
       );
-      if (editingId) endEdit();
+      if (editingId) {
+        endEdit();
+        clearComposedRule();
+      }
       await loadRules();
     } else {
       setStatus(`${formatApiTime(res.time)} にアラームを登録しました。`);
