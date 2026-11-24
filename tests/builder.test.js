@@ -13,6 +13,7 @@ import {
   describeExceptions,
   describeWeekdays,
   formatUntilDate,
+  apiDateToInput,
   toApiDate,
   toApiTime,
   toExecCurl,
@@ -233,6 +234,10 @@ describe("recurrence helpers", () => {
     expect(toApiDate("2026-12-31")).toBe("20261231");
     expect(toApiDate("")).toBeNull();
     expect(toApiDate("2026/12/31")).toBeNull();
+    expect(apiDateToInput("20261231")).toBe("2026-12-31");
+    expect(apiDateToInput("")).toBe("");
+    expect(apiDateToInput(null)).toBe("");
+    expect(apiDateToInput("2026-12-31")).toBe("");
   });
 
   it("describes exception dates sorted, once each", () => {

@@ -277,6 +277,13 @@ export function toApiDate(dateValue) {
   return d ? `${d[1]}${d[2]}${d[3]}` : null;
 }
 
+// "20261231" (the alarm-gas format) -> "2026-12-31" (a date input
+// value). Anything that is not a date key becomes "".
+export function apiDateToInput(key) {
+  const m = /^(\d{4})(\d{2})(\d{2})$/.exec(asText(key));
+  return m ? `${m[1]}-${m[2]}-${m[3]}` : "";
+}
+
 // Exception dates (a list of "YYYYMMDD" keys) -> a short Japanese
 // description like "2026/12/25・2027/01/01を除く". Entries that are
 // not date keys are ignored rather than leaking blank segments into

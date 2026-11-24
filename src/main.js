@@ -22,6 +22,7 @@ import {
   describeWeekdays,
   formatApiTime,
   formatUntilDate,
+  apiDateToInput,
   fromWireCommand,
   prefixVolume,
   speechTextWithTime,
@@ -85,6 +86,7 @@ const cmdCountEl = $("cmd-count");
 const formStatusEl = $("form-status");
 const statusEl = $("status");
 const registerBtn = $("register");
+const cancelEditBtn = $("cancel-edit");
 const shareBannerEl = $("share-banner");
 const shareExpiredEl = $("share-expired");
 const shareSectionEl = $("share-section");
@@ -609,6 +611,12 @@ async function loadRules() {
         }
       });
       actions.appendChild(del);
+      const editBtn = document.createElement("button");
+      editBtn.type = "button";
+      editBtn.className = "theme-toggle";
+      editBtn.textContent = "編集";
+      editBtn.addEventListener("click", () => startEditRule(rule));
+      actions.appendChild(editBtn);
       const editor = buildExceptionEditor(rule);
       const excBtn = document.createElement("button");
       excBtn.type = "button";
@@ -833,7 +841,60 @@ $("reload").addEventListener("click", () => {
   loadRules();
 });
 
+// The id of the recurring rule loaded into the form for editing, or
+// null while the form composes a new rule. Editing always goes
+// through the commands mode: the rule's stored commands are loaded
+// into the builder list as they are.
+let editingRuleId = null;
+
+function startEditRule(rule) {
+  editingRuleId = rule.id;
+  selectMainTab("form");
+  document.querySelector('input[name="kind"][value="repeat"]').checked = true;
+  document.querySelectorAll('input[name="kind"]').forEach((radio) => {
+    radio.disabled = true;
+  });
+  renderKind();
+  timeEl.value = rule.time || "";
+  activeWeekdays = new Set(
+    Array.isArray(rule.weekdays) && rule.weekdays.length > 0
+      ? rule.weekdays
+      : [0, 1, 2, 3, 4, 5, 6],
+  );
+  renderWeekdayChips();
+  untilEl.value = rule.until ? apiDateToInput(rule.until) : "";
+  formExceptions = Array.isArray(rule.exceptions) ? [...rule.exceptions] : [];
+  renderFormExceptions();
+  document.querySelector('input[name="mode"][value="commands"]').checked = true;
+  renderMode();
+  commands = (Array.isArray(rule.commands) ? rule.commands : []).map(fromWireCommand);
+  renderCommands();
+  registerBtn.textContent = "更新する";
+  cancelEditBtn.hidden = false;
+  setStatus(`編集中： ${describeWeekdays(rule.weekdays)} ${rule.time} のルール`);
+  formSectionEl.scrollIntoView?.();
+}
+
+function endEdit() {
+  editingRuleId = null;
+  document.querySelectorAll('input[name="kind"]').forEach((radio) => {
+    radio.disabled = false;
+  });
+  registerBtn.textContent = "登録する";
+  cancelEditBtn.hidden = true;
+}
+
+cancelEditBtn.addEventListener("click", () => {
+  endEdit();
+  commands = [];
+  renderCommands();
+  formExceptions = [];
+  renderFormExceptions();
+  setStatus("編集をやめました。");
+});
+
 registerBtn.addEventListener("click", async () => {
+  const editingId = editingRuleId;
   const repeat = currentKind() === "repeat";
   const apiTime = toApiTime(dateEl.value, timeEl.value);
   if (!repeat && !apiTime) {
@@ -859,6 +920,15 @@ registerBtn.addEventListener("click", async () => {
   if (repeat && formExceptions.length) {
     body.exceptions = [...formExceptions].sort();
   }
+  if (repeat && editingId) {
+    // Editing rewrites the rule in place: until and exceptions are
+    // always sent (an empty value clears them), unlike a fresh
+    // registration where an omitted field simply starts empty.
+    body.action = "update_rule";
+    body.id = editingId;
+    body.until = toApiDate(untilEl.value) || "";
+    body.exceptions = [...formExceptions].sort();
+  }
   if (mode === "speech") {
     const cmds = speakerCommands(
       simpleSpeakers,
@@ -878,7 +948,7 @@ registerBtn.addEventListener("click", async () => {
     body.commands = commands.map(toWireCommand);
   }
   registerBtn.disabled = true;
-  setStatus("登録中…");
+  setStatus(editingId ? "更新中…" : "登録中…");
   try {
     const res = await api(body);
     if (isShareAuthError(res)) {
@@ -889,10 +959,11 @@ registerBtn.addEventListener("click", async () => {
     updateShareBanner(res);
     if (repeat) {
       setStatus(
-        `繰り返しを登録しました（${describeWeekdays(res.rule.weekdays)} ${res.rule.time}` +
+        `繰り返しを${editingId ? "更新" : "登録"}しました（${describeWeekdays(res.rule.weekdays)} ${res.rule.time}` +
           `${res.rule.until ? `、${formatUntilDate(res.rule.until)}まで` : ""}` +
           `${describeExceptions(res.rule.exceptions) ? `、${describeExceptions(res.rule.exceptions)}` : ""}）。`,
       );
+      if (editingId) endEdit();
       await loadRules();
     } else {
       setStatus(`${formatApiTime(res.time)} にアラームを登録しました。`);
@@ -904,7 +975,7 @@ registerBtn.addEventListener("click", async () => {
     renderFormExceptions();
     selectMainTab("list");
   } catch (err) {
-    setStatus(`登録に失敗しました: ${err.message}`, true);
+    setStatus(`${editingId ? "更新" : "登録"}に失敗しました: ${err.message}`, true);
   } finally {
     registerBtn.disabled = false;
   }
