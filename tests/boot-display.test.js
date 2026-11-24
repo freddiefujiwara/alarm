@@ -49,6 +49,12 @@ describe("boot display", () => {
     );
   });
 
+  it("lets the hidden attribute win over class display rules", () => {
+    // .theme-toggle sets display: inline-flex, which would otherwise
+    // keep hidden buttons (logout, cancel-edit) visible.
+    expect(css).toMatch(/\[hidden\] \{\s*display: none !important;/);
+  });
+
   it("hides the loading screen on every landing screen", () => {
     for (const fn of ["showGate", "showMain", "showShareMain", "showShareExpired"]) {
       expect(fnBody(fn)).toContain("loadingEl.hidden = true");
