@@ -212,6 +212,16 @@ function applyMainTab() {
 }
 
 function selectMainTab(name) {
+  // Leaving the form while a rule is being edited ends the edit:
+  // the form returns to its initial state and the "editing" status
+  // does not linger over the list. startEditRule switches TO the
+  // form and the register flow ends the edit before switching away,
+  // so neither of those trips this.
+  if (name !== "form" && editingRuleId) {
+    endEdit();
+    clearComposedRule();
+    setStatus("編集をやめました。");
+  }
   mainTab = name;
   applyMainTab();
 }
@@ -884,12 +894,23 @@ function endEdit() {
   cancelEditBtn.hidden = true;
 }
 
-cancelEditBtn.addEventListener("click", () => {
-  endEdit();
+// Return the rule fields of the form to their initial state: no
+// time, every weekday on, no until, no exceptions, no commands.
+function clearComposedRule() {
+  timeEl.value = "";
+  activeWeekdays = new Set([0, 1, 2, 3, 4, 5, 6]);
+  renderWeekdayChips();
+  untilEl.value = "";
   commands = [];
   renderCommands();
   formExceptions = [];
   renderFormExceptions();
+}
+
+cancelEditBtn.addEventListener("click", () => {
+  endEdit();
+  clearComposedRule();
+  selectMainTab("list");
   setStatus("編集をやめました。");
 });
 
@@ -963,7 +984,10 @@ registerBtn.addEventListener("click", async () => {
           `${res.rule.until ? `、${formatUntilDate(res.rule.until)}まで` : ""}` +
           `${describeExceptions(res.rule.exceptions) ? `、${describeExceptions(res.rule.exceptions)}` : ""}）。`,
       );
-      if (editingId) endEdit();
+      if (editingId) {
+        endEdit();
+        clearComposedRule();
+      }
       await loadRules();
     } else {
       setStatus(`${formatApiTime(res.time)} にアラームを登録しました。`);
