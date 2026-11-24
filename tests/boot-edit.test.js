@@ -143,4 +143,27 @@ describe("boot rule editing (runtime)", () => {
     expect(document.getElementById("form-section").hidden).toBe(true);
     expect(document.getElementById("list-section").hidden).toBe(false);
   });
+
+  it("switching to the list tab ends the edit and clears its status", async () => {
+    vi.resetModules();
+    bootPage();
+    localStorage.setItem("alarm-session-token", "saved-session");
+    localStorage.setItem("alarm-session-email", "owner@example.com");
+    vi.stubGlobal("fetch", stubFetch(() => {}));
+
+    await bootApp();
+
+    await until(() => document.getElementById("rule-list").children.length === 1);
+    clickButton(document.getElementById("rule-list"), "編集");
+    await until(() => document.getElementById("register").textContent === "更新する");
+    expect(document.getElementById("status").textContent).toContain("編集中");
+
+    document.querySelector('[data-main-tab="list"]').click();
+
+    await until(() => document.getElementById("list-section").hidden === false);
+    expect(document.getElementById("status").textContent).toBe("編集をやめました。");
+    expect(document.getElementById("register").textContent).toBe("登録する");
+    expect(document.getElementById("cancel-edit").hidden).toBe(true);
+    expect(document.getElementById("time").value).toBe("");
+  });
 });

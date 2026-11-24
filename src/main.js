@@ -212,6 +212,16 @@ function applyMainTab() {
 }
 
 function selectMainTab(name) {
+  // Leaving the form while a rule is being edited ends the edit:
+  // the form returns to its initial state and the "editing" status
+  // does not linger over the list. startEditRule switches TO the
+  // form and the register flow ends the edit before switching away,
+  // so neither of those trips this.
+  if (name !== "form" && editingRuleId) {
+    endEdit();
+    clearComposedRule();
+    setStatus("編集をやめました。");
+  }
   mainTab = name;
   applyMainTab();
 }
