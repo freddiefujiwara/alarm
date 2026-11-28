@@ -167,3 +167,67 @@ describe("boot rule editing (runtime)", () => {
     expect(document.getElementById("time").value).toBe("");
   });
 });
+
+it("renders both alarm row types while keeping their distinct controls and delete actions", async () => {
+  vi.resetModules();
+  bootPage();
+  localStorage.setItem("alarm-session-token", "saved-session");
+  localStorage.setItem("alarm-session-email", "owner@example.com");
+  const alarmTime = "20261223-06:52";
+  const commands = ["switchbot-command -d DEVICE1 -c turnOff", "echo sample"];
+  const deletes = [];
+  vi.stubGlobal("fetch", vi.fn(async (_url, init) => {
+    const body = JSON.parse(init.body);
+    if (body.action === "list") {
+      return jsonResponse({ ok: true, alarms: [{ time: alarmTime, commands }] });
+    }
+    if (body.action === "list_rules") {
+      return jsonResponse({ ok: true, rules: [{ ...rule, commands }] });
+    }
+    if (body.action === "delete" || body.action === "delete_rule") {
+      deletes.push(body);
+    }
+    return jsonResponse({ ok: true });
+  }));
+
+  vi.stubEnv("VITE_ALARM_EXEC_BASE", "https://exec.example.test");
+  try {
+    await bootApp();
+  } finally {
+    vi.unstubAllEnvs();
+  }
+  await until(() => document.querySelector("#alarm-list .alarm-row")
+    && document.querySelector("#rule-list .alarm-row"));
+  const single = document.querySelector("#alarm-list .alarm-row");
+  const repeat = document.querySelector("#rule-list .alarm-row");
+  const label = (row, selector) => row.querySelector(selector).textContent;
+  const buttons = (row) => [...row.querySelectorAll(".row-actions > button")]
+    .map((button) => button.getAttribute("aria-label") || button.textContent);
+
+  expect(label(single, ".alarm-time")).toBe("12/23 06:52");
+  expect(label(repeat, ".alarm-time")).toBe("平日のみ 07:30");
+  const commandLabel = "/switchbot-command/-d/DEVICE1/-c/turnOff / /echo/sample";
+  expect(label(single, ".alarm-commands")).toBe(commandLabel);
+  expect(label(repeat, ".alarm-commands")).toBe(
+    `${commandLabel}（2026/12/31まで、2026/12/25を除く）`,
+  );
+  expect(buttons(single)).toEqual(["curlを表示", "curlをコピー", "削除"]);
+  expect(buttons(repeat)).toEqual(["curlを表示", "curlをコピー", "削除", "編集", "除外日"]);
+  for (const row of [single, repeat]) {
+    const block = row.querySelector(".exec-block");
+    const toggle = row.querySelector('[aria-label="curlを表示"]');
+    expect(block.hidden).toBe(true);
+    expect(label(row, ".exec-pre")).toContain("DEVICE1");
+    toggle.click();
+    expect(block.hidden).toBe(false);
+    expect(toggle.getAttribute("aria-expanded")).toBe("true");
+  }
+
+  clickButton(single, "削除");
+  clickButton(repeat, "削除");
+  await until(() => deletes.length === 2);
+  expect(deletes).toEqual([
+    expect.objectContaining({ action: "delete", time: alarmTime }),
+    expect.objectContaining({ action: "delete_rule", id: rule.id }),
+  ]);
+});

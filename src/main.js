@@ -465,6 +465,29 @@ function appendExecCurl(container, actions, wires) {
   actions.append(toggle, copy);
 }
 
+function buildAlarmRow(timeLabel, commands, suffixes = []) {
+  const row = document.createElement("div");
+  row.className = "alarm-row";
+  const details = document.createElement("div");
+  const time = document.createElement("div");
+  time.className = "alarm-time";
+  time.textContent = timeLabel;
+  const cmds = document.createElement("div");
+  cmds.className = "alarm-commands";
+  const commandLabel = commands
+    .map((c) => describeCommand(fromWireCommand(c), catalog))
+    .join(" / ");
+  cmds.textContent = suffixes.length
+    ? `${commandLabel}（${suffixes.join("、")}）`
+    : commandLabel;
+  details.append(time, cmds);
+  const actions = document.createElement("div");
+  actions.className = "row-actions";
+  appendExecCurl(details, actions, commands);
+  row.append(details, actions);
+  return { row, details, actions };
+}
+
 // The per-rule exception-date editor shown under a rule row: the
 // current dates as removable chips, a date input to add more, and a
 // save button that replaces the rule's dates in place
@@ -577,26 +600,15 @@ async function loadRules() {
     rules.forEach((rule) => {
       if (!rule || typeof rule !== "object") return;
       const commands = Array.isArray(rule.commands) ? rule.commands : [];
-      const row = document.createElement("div");
-      row.className = "alarm-row";
-      const left = document.createElement("div");
-      const time = document.createElement("div");
-      time.className = "alarm-time";
-      time.textContent = `${describeWeekdays(rule.weekdays)} ${rule.time}`;
-      const cmds = document.createElement("div");
-      cmds.className = "alarm-commands";
-      const parts = commands
-        .map((c) => describeCommand(fromWireCommand(c), catalog))
-        .join(" / ");
       const suffixes = [];
       if (rule.until) suffixes.push(`${formatUntilDate(rule.until)}まで`);
       const exceptionsText = describeExceptions(rule.exceptions);
       if (exceptionsText) suffixes.push(exceptionsText);
-      cmds.textContent = suffixes.length ? `${parts}（${suffixes.join("、")}）` : parts;
-      left.append(time, cmds);
-      const actions = document.createElement("div");
-      actions.className = "row-actions";
-      appendExecCurl(left, actions, commands);
+      const { row, details, actions } = buildAlarmRow(
+        `${describeWeekdays(rule.weekdays)} ${rule.time}`,
+        commands,
+        suffixes,
+      );
       const del = document.createElement("button");
       del.type = "button";
       del.className = "theme-toggle";
@@ -636,8 +648,7 @@ async function loadRules() {
         editor.hidden = !editor.hidden;
       });
       actions.appendChild(excBtn);
-      left.appendChild(editor);
-      row.append(left, actions);
+      details.appendChild(editor);
       ruleListEl.appendChild(row);
     });
   } catch (err) {
@@ -800,21 +811,7 @@ async function loadList() {
     alarms.forEach((alarm) => {
       if (!alarm || typeof alarm !== "object") return;
       const commands = Array.isArray(alarm.commands) ? alarm.commands : [];
-      const row = document.createElement("div");
-      row.className = "alarm-row";
-      const left = document.createElement("div");
-      const time = document.createElement("div");
-      time.className = "alarm-time";
-      time.textContent = formatApiTime(alarm.time);
-      const cmds = document.createElement("div");
-      cmds.className = "alarm-commands";
-      cmds.textContent = commands
-        .map((c) => describeCommand(fromWireCommand(c), catalog))
-        .join(" / ");
-      left.append(time, cmds);
-      const actions = document.createElement("div");
-      actions.className = "row-actions";
-      appendExecCurl(left, actions, commands);
+      const { row, actions } = buildAlarmRow(formatApiTime(alarm.time), commands);
       const del = document.createElement("button");
       del.type = "button";
       del.className = "theme-toggle";
@@ -838,7 +835,6 @@ async function loadList() {
         }
       });
       actions.appendChild(del);
-      row.append(left, actions);
       listEl.appendChild(row);
     });
   } catch (err) {
